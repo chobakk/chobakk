@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(python3 -I:*)",
+      "Bash(pip install:*)",
+      "Bash(git:*)",
+      "Bash(unzip:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Read",
+      "Edit",
+      "Write",
+      "WebFetch",
+      "WebSearch"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)"
+    ]
+  }
+}
