@@ -1,0 +1,1 @@
+Source: https://github.com/jmeier1963/large_capital_project_management/evm (README states MIT; no LICENSE file in the repo). The description was narrowed so it does not fire on ordinary PMS daily/physical progress reports. evm_calculator.py has NOT been executed in this project. CLAUDE.md rules take precedence over this skill (including "plan first").

@@ -1,0 +1,3 @@
+Source: https://github.com/90le/microsoft-excel-bi-agent (MIT). Copied 2026-11-03 without changes to SKILL.md.
+"Package-level tools/..." referenced in SKILL.md are in vendor/microsoft-excel-bi-agent/tools/ at the repo root.
+Scripts have NOT been executed in this project. CLAUDE.md rules (work on copies, do not touch the user's macros) take precedence.

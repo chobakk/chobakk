@@ -1,0 +1,1 @@
+Source: https://github.com/microsoft/semantic-link-labs/.claude/skills/sql_to_dax (MIT, Microsoft). Only the skill name was changed (underscore to hyphen).
