@@ -76,7 +76,7 @@ No code has been changed. Stage 2 waits for the user's approval.
 ## 3. Bugs and risks (ranked)
 | # | Severity | Where | Issue |
 |---|---|---|---|
-| 1 | High | Zero maker, FRJ | `FRJP!AT3` vs the verified `FRJP!AS3`. Possible wrong-cell increment or a mid-run error (after copies are done) |
+| 1 | ~~High~~ Closed | Zero maker, FRJ | (User confirmed the new files are correct: FRJP uses AT3.) `FRJP!AT3` vs the verified `FRJP!AS3`. Possible wrong-cell increment or a mid-run error (after copies are done) |
 | 2 | High | all .bas | Files are **UTF-8 with BOM** and five have **LF-only** line endings. The VBE importer expects ANSI + CRLF. The BOM can turn line 1 into `ï»¿Attribute VB_Name…`, giving a syntax error and/or a wrong module name. Re-save as ANSI/CRLF before import, or check after import. |
 | 3 | High | SOI | SOL2 range 9–716 vs last data row 719 |
 | 4 | High | SOI | Source value columns AC/AH vs the noted Today columns AA/AF |
@@ -109,7 +109,7 @@ No code has been changed. Stage 2 waits for the user's approval.
 - Converting the workbook to xlsx.
 
 ## 6. Questions for the user
-1. FRJP: is the day number in `AS3` or `AT3` today? (The 10deab macro used AS3.)
+1. ~~FRJP: is the day number in `AS3` or `AT3` today?~~ **Answered 2026-11-03: the new files are correct, so FRJP uses `AT3`.** Risk #1 is closed.
 2. Cov-P: should AB34 get yesterday's AE34 (copy AB34←AE34 first) or today's M13 (current order)?
 3. SOI: are AC/AH the Today quantity columns in the current Soleh file? Does SOL2 data end at 716 or 719?
 4. Where is the `Contractors` sheet, and what are its columns?
