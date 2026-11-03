@@ -8,6 +8,8 @@ workbook notes, [verify] = must be confirmed on a copy of the real workbook.
 
 No code has been changed. Stage 2 waits for the user's approval.
 
+> **Decision 2026-11-03 (user):** all six macros are correct as they are and need no changes. Stage 2 is **not** going ahead. The risks below are kept for reference only. Treat the current behaviour (Cov-P order, SOI columns/ranges, log format, Final Touch version) as intended. Reopen only if the user asks.
+
 ---
 
 ## 1. Module-by-module
