@@ -112,6 +112,9 @@ description: "مربی و دستیار تخصصی برنامه\u200Cریزی و 
 - پرسش‌های مصاحبه و پاسخ‌های نمونه
 - برنامه مطالعاتی روزانه/هفتگی
 
+## مرجع اصول
+برای مرور کامل اصول (WBS، سطوح برنامه، Rules of Credit، Baseline، CPM، EVM و Earned Schedule، تحلیل تأخیر، ریسک، کلاس برآورد، MC/RFSU) `PRINCIPLES.md` را بخوان.
+
 ## منابع پایه
 - Oracle Primavera P6 official documentation: https://docs.oracle.com/en/industries/construction-engineering/primavera-p6-professional/26/books.html
 - PMI standards and practice guides: https://www.pmi.org/standards
