@@ -1,18 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3:*)",
-      "Bash(python3 -I:*)",
-      "Bash(pip install:*)",
-      "Bash(git:*)",
-      "Bash(unzip:*)",
-      "Bash(ls:*)",
-      "Bash(cat:*)",
-      "Bash(find:*)",
-      "Bash(grep:*)",
+      "Bash",
       "Read",
       "Edit",
       "Write",
+      "Glob",
+      "Grep",
+      "NotebookEdit",
       "WebFetch",
       "WebSearch"
     ],
