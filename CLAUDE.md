@@ -1,5 +1,7 @@
 # ODCC Abadan — دستیار گزارش‌گیری و کنترل پروژه (ARUP Phase 2-2)
 
+نام پروژه: **ARUP = Abadan Refinery Upgrading Project، فاز 2-2** (طرح ارتقای پالایشگاه آبادان). فایل‌ها: `CSM-DR-P2` = Consortium Daily Report Phase 2.
+
 ## کاربر
 کارشناس رپورتینگ واحد برنامه‌ریزی و کنترل پروژه (PPC) شرکت ODCC آبادان (تازه شروع کرده). پروژه ساخت‌وساز/نفتی، Abadan Refinery Upgrading Project فاز 2-2. فارسی بنویس؛ اصطلاحات فنی (WBS, Activity ID, Baseline, SPI, Up to Last/Today/Up to Now) را انگلیسی نگه دار.
 
@@ -20,7 +22,13 @@
 - `docs/open-questions.md`: چیزهایی که هنوز نمی‌دانیم.
 - `docs/file-inventory.md`: فایل‌هایی که باید کنار پروژه بگذاری و هر کدام چیست.
 - `docs/reference/`: راهنمای WBS (PDF)، سند زمینه کاری، اسکرین‌شات پوشه‌ها، دستورالعمل قدیمی پروژه.
-- `.claude/skills/`: اسکیل‌ها: `odcc-project-controls-agent` (اصلی، شامل references/pms-workbook.md، wbs-structure.md، daily-routine.md)، `p6-primavera-agent` (۱۵ workflow برای MCP Primavera P6)، `power-bi-dax`، `oil-gas-project-controls` (آموزش).
+- `.claude/skills/`: اسکیل‌ها:
+  - `odcc-project-controls-agent` (اصلی، شامل references/pms-workbook.md، wbs-structure.md، daily-routine.md)
+  - `oil-gas-project-controls` (آموزش + `PRINCIPLES.md` مرجع اصول)
+  - `excel-project-controls` (فرمول، فایل سنگین، Power Query، تاریخ شمسی)
+  - `power-bi-progress-model` (مدل و DAX پیشرفت/منحنی S) + `power-bi-dax` (DAX عمومی)
+  - `sql-project-controls` (رول‌آپ وزنی، منحنی S، تطبیق، کوئری P6)
+  - `p6-xer-offline` (P6 با فایل XER، بدون MCP؛ ابزار `scripts/xer_tool.py`) + `p6-primavera-agent` (۱۵ workflow، فقط با MCP Primavera P6)
 - `tools/pms_inspect.py`: خواندن امن و سریع فایل‌های بزرگ اکسل (help: `python tools/pms_inspect.py -h`).
 
 ## روال روزانه (خلاصه؛ جزئیات در اسکیل odcc-project-controls-agent)
