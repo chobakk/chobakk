@@ -1,0 +1,7 @@
+# Large/working data files: keep local, never commit
+*.xlsm
+*.xlsx
+*.xlsb
+*.xls
+CONTRACTORS/
+__pycache__/

@@ -1,0 +1,2 @@
+power-bi-dax is copied unchanged from https://github.com/skillmedev/skills (skills/power-bi-dax),
+Copyright (c) 2026 Alexander Ouellet, MIT License (see LICENSE.txt).

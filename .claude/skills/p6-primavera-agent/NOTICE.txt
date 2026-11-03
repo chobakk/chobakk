@@ -1,0 +1,4 @@
+The workflows under references/workflows/ are copied unchanged from the skill shop
+"MCP for Primavera P6 skill shop" (p6-mcp-shop), https://github.com/nizarhamza/p6-mcp ,
+published under the Apache License 2.0 (see LICENSE.txt). They are for use with the
+"MCP for Primavera P6" server (tools named p6_*). p6mcp.json installer files are not included.
