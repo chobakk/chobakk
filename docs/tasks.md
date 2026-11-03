@@ -6,7 +6,6 @@
 
 ## منتظر کاربر
 - [!] **آپلود فایل‌ها (کپی):** آخرین `CSM-DR-P2-...xlsm` + فایل‌های Soleh، Sekaf & Farjoud، Ehdas همان روز. شرط پایان: `pms_inspect.py sheets` روی هر فایل خروجی بدهد.
-- [~] **مجوز اسکریپت‌ها:** `.claude/settings.json` را کاربر 2026-11-03 روی main ساخت (JSON معتبر، چک شد). باقی‌مانده: در یک **Session جدید** تست شود. شرط پایان: `lint_vba_source.py` روی `macros/pile-compile-package/` و `evm_calculator.py` روی `examples/` بدون بلاک اجرا شوند و نتیجه اینجا ثبت شود.
 - [!] **جدول ۳۱ روزه بعد از ۲۲ نوامبر:** کاربر روالش را بگوید. شرط پایان: روال در `memory-notes.md` ثبت و سؤال ۷ در `open-questions.md` بسته شود.
 - [!] **Plan% شیت‌های پیمانکار:** کدام ستون/سلول (فرمول `#REF!`). شرط پایان: آدرس سلول ثبت شود (سؤال ۴).
 
@@ -20,3 +19,7 @@
 - [x] 2026-11-03 اسکیل‌های Excel / Power BI / SQL / P6 آفلاین + `PRINCIPLES.md` (PR #2).
 - [x] 2026-11-03 تحلیل مرحله ۱ ماکروها؛ کاربر: همه درست‌اند، تغییری لازم نیست (PR #2، #3).
 - [x] 2026-11-03 اسکیل‌های بیرونی MIT (PR #4).
+- [x] 2026-11-03 **تست مجوز اسکریپت‌ها در Session جدید** (بدون بلاک اجرا شدند):
+  - `python3 -I .claude/skills/excel-vba-workbook-engineering/scripts/lint_vba_source.py macros/pile-compile-package` → exit 0، «VBA source lint OK: 6 modules, 32 procedures, 6 public entry subs». فقط ۶ هشدار: `Attribute VB_Name` (Module1..6) با نام فایل یکی نیست (طبیعی برای ماژول‌های export‌شده؛ ماکروها تغییر نکردند).
+  - `evm_calculator.py` نیاز به `pip install -r .claude/skills/evm/requirements.txt` داشت (matplotlib نصب نبود؛ در هر Session ابری تازه دوباره لازم است). بعد از نصب: هر دو `examples/h2-pipeline-snapshot.csv` و `h2-pipeline-timephased.csv` → exit 0، گزارش + نمودارها (snapshot: ۳ نمودار، timephased: ۵ نمودار). نمونه timephased: CPI 0.949، SPI 0.855.
+  - خروجی‌ها فقط در scratchpad Session نوشته شدند، نه در ریپو.
