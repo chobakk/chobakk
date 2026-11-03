@@ -6,7 +6,7 @@
 
 ## منتظر کاربر
 - [!] **آپلود فایل‌ها (کپی):** آخرین `CSM-DR-P2-...xlsm` + فایل‌های Soleh، Sekaf & Farjoud، Ehdas همان روز. شرط پایان: `pms_inspect.py sheets` روی هر فایل خروجی بدهد.
-- [!] **مجوز اسکریپت‌ها:** کاربر `.claude/settings.json` را در GitHub بسازد (متن در گفتگوی 2026-11-03). شرط پایان: `lint_vba_source.py` روی `macros/pile-compile-package/` بدون بلاک اجرا شود.
+- [~] **مجوز اسکریپت‌ها:** `.claude/settings.json` را کاربر 2026-11-03 روی main ساخت (JSON معتبر، چک شد). باقی‌مانده: در یک **Session جدید** تست شود. شرط پایان: `lint_vba_source.py` روی `macros/pile-compile-package/` و `evm_calculator.py` روی `examples/` بدون بلاک اجرا شوند و نتیجه اینجا ثبت شود.
 - [!] **جدول ۳۱ روزه بعد از ۲۲ نوامبر:** کاربر روالش را بگوید. شرط پایان: روال در `memory-notes.md` ثبت و سؤال ۷ در `open-questions.md` بسته شود.
 - [!] **Plan% شیت‌های پیمانکار:** کدام ستون/سلول (فرمول `#REF!`). شرط پایان: آدرس سلول ثبت شود (سؤال ۴).
 
