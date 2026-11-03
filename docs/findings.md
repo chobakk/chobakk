@@ -41,3 +41,12 @@
 - فایل سنگین: PMS-Overall ≈ 380MB XML، ۳۴۴۶ Defined Name (۳۱۵۱ مخفی، ۸۹۶ با #REF!)، styles ≈ 11MB. بدون اجازه پاک نکن.
 - `Machinary` غلط املایی است (درست: Machinery)؛ فقط ۲ فرمول در Cov-P و یک فیلتر مخفی به آن ارجاع دارند؛ ماکرو ندارد. کاربر گفت فعلاً دست نزن.
 - Cnt-t: K11:AO11 تاریخ واقعی با فرمت `dd`؛ دوره ماهانه 26 تا 25.
+
+## ۸) داشبورد مدیریتی MGR (Power BI) — بررسی 2026-11-03 [فایل]
+فایل‌ها: `MGR-25-SEP-2026.xlsx` (۲۴ شیت، Cut-off = `Time 6 Month!C2` = 2026-09-25) و `MGR-25-SEP-2026.pbix`. خروجی بازطراحی: `powerbi/mgr-redesign/`.
+- **pbix:** ۳۵ جدول (۲۴ شیت + ۱۰ LocalDateTable + ۱ Template؛ Auto date/time روشن)؛ **صفر Measure**؛ همه ویژوال‌ها Sum خودکار ستون (از جمله Sum روی SPI). مسیر منبع ثابت `C:\Users\h.sheykhmiri\Desktop\MGR-25-SEP-2026\...`.
+- رابطه‌های غلط: `1-WBS[V.R]→Estimate 3[V.R]`، `1-WBS[Row]→Overall ODCC[Row]`، `03-Discipline[Row]→Overall ODCC[Row]`، `Estimate 1[Row]↔Overall ODCC` (1:1 Both)، `1-Overall Plan[Min]↔1-Overall Actual[Min]` (1:1 Both).
+- ۳۳ ویژوال سفارشی داخل فایل، فقط ۶ استفاده‌شده (Liquid Fill Gauge ×17، Bullet Chart، Bullet OKViz، Waffle، Sunburst، Scrolling Text).
+- اکسل: جدول‌های پهن (`Estimate 2`، `SPI`، `SPI-6M`، `6M-S-curve-m`، `Overall Contractor`)؛ `03-Discipline` درصد 0-100 و بقیه 0-1؛ `SPI-6M` و `Overall ODCC` بدون فرمول.
+- کنترل‌شده: میانگین وزنی `1-WBS` = Overall دقیقاً (14.5175% / 15.9423%)؛ SPI پیمانکار = آخرین ردیف Actual در `S-Curve-Contractor` (برابر `Progress-SPI-Contractor`).
+- اختلاف‌ها [تأیید شود]: `EST2!D38` تایپی 118,115.26 ≠ جمع Unitها 91,721.50؛ `Contractor!E18:G18` (Overall Aug-2026) تایپی 23,948 ≠ جمع پیمانکارها 26,534؛ میانگین وزنی دیسیپلین ≠ Overall (Plan 13.38%)؛ شیت `ODCC` دو نسخه برنامه 47 و 60 ماهه روی ماه‌های یکسان دارد (جمع نزن).

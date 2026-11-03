@@ -33,6 +33,7 @@
   - `p6-xer-offline` (P6 با فایل XER، بدون MCP؛ ابزار `scripts/xer_tool.py`) + `p6-primavera-agent` (۱۵ workflow، فقط با MCP Primavera P6)
   - اسکیل‌های بیرونی (MIT، از GitHub؛ اسکریپت‌هایشان هنوز اجرا/تست نشده، قواعد این فایل مقدم است):
     `excel-vba-workbook-engineering`، `excel-workbook-qa-auditor`، `power-query-m-engineering`، `power-pivot-dax-modeling`، `power-bi-semantic-model` (از 90le/microsoft-excel-bi-agent؛ ابزارها در `vendor/microsoft-excel-bi-agent/tools/`)، `sql-to-dax` (Microsoft semantic-link-labs)، `evm` (EVM هزینه‌ای؛ برای گزارش پیشرفت فیزیکی PMS نیست)
+- `powerbi/mgr-redesign/`: بازطراحی داشبورد مدیریتی MGR (اسکریپت مدل ستاره‌ای، Power Query، DAX، تم سرمه‌ای، راهنما؛ README همان پوشه).
 - `tools/pms_inspect.py`: خواندن امن و سریع فایل‌های بزرگ اکسل (help: `python tools/pms_inspect.py -h`).
 
 ## روال روزانه (خلاصه؛ جزئیات در اسکیل odcc-project-controls-agent)

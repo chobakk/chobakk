@@ -1,0 +1,266 @@
+// =====================================================================
+// DAX measures for the MGR model.  Put them in one table:
+//   Home > Enter data > table name "_Measures" (one empty column) > Load,
+//   then New measure for each block below and set the Format shown.
+//   After all measures exist, delete the empty column: the table becomes a
+//   measure table and moves to the top of the Fields pane.
+// Display folders are the "// ==" headings.
+// Rule: SPI is never summed. It is always DIVIDE(Actual, Plan).
+// "SPI (physical)" = weighted progress ratio, not cost EVM SPI.
+// =====================================================================
+
+// == 0 Report ==========================================================
+Cut-off Date =
+CALCULATE ( MAX ( Snapshot[ValueDate] ), Snapshot[Key] = "CutOffDate" )
+// Format: dd mmm yyyy
+
+Report Subtitle =
+"Abadan Refinery Upgrading Project – Phase 2-2   |   Cut-off: "
+    & FORMAT ( [Cut-off Date], "dd MMM yyyy" )
+
+Snapshot Value =
+// helper: use with a Snapshot[Key] filter in CALCULATE
+SUM ( Snapshot[Value] )
+
+// == 1 Overall S-curve ================================================
+// Scope slicer is optional; with nothing (or several) selected it shows Overall.
+Plan Cum % =
+VAR scope = SELECTEDVALUE ( DimScope[ScopeCode], "Overall" )
+VAR d     = MAX ( DimDate[Date] )
+VAR lastPlanDate =
+    CALCULATE ( MAX ( FactSCurveDaily[Date] ), REMOVEFILTERS ( DimDate ), REMOVEFILTERS ( DimScope ) )
+RETURN
+    IF (
+        MIN ( DimDate[Date] ) <= lastPlanDate,
+        CALCULATE (
+            SUM ( FactSCurveDaily[CumPlan] ),
+            REMOVEFILTERS ( DimDate ), REMOVEFILTERS ( DimScope ),
+            DimDate[Date] = MIN ( d, lastPlanDate ),
+            FactSCurveDaily[ScopeCode] = scope
+        )
+    )
+// Format: 0.00%
+
+Actual Cum % =
+VAR scope  = SELECTEDVALUE ( DimScope[ScopeCode], "Overall" )
+VAR cutoff = [Cut-off Date]
+VAR d      = MIN ( MAX ( DimDate[Date] ), cutoff )
+RETURN
+    IF (
+        MIN ( DimDate[Date] ) <= cutoff,
+        CALCULATE (
+            SUM ( FactSCurveDaily[CumActual] ),
+            REMOVEFILTERS ( DimDate ), REMOVEFILTERS ( DimScope ),
+            DimDate[Date] = d,
+            FactSCurveDaily[ScopeCode] = scope
+        )
+    )
+// Format: 0.00%   (blank after cut-off, so the line stops at the data date)
+
+Plan % @ Cut-off =
+CALCULATE ( [Plan Cum %], REMOVEFILTERS ( DimDate ), DimDate[Date] = [Cut-off Date] )
+// Format: 0.00%
+
+Actual % @ Cut-off =
+CALCULATE ( [Actual Cum %], REMOVEFILTERS ( DimDate ), DimDate[Date] = [Cut-off Date] )
+// Format: 0.00%
+
+Variance % @ Cut-off = [Actual % @ Cut-off] - [Plan % @ Cut-off]
+// Format: +0.00%;-0.00%;0.00%
+
+SPI (physical) @ Cut-off = DIVIDE ( [Actual % @ Cut-off], [Plan % @ Cut-off] )
+// Format: 0.00
+
+Variance Cum % = IF ( NOT ISBLANK ( [Actual Cum %] ), [Actual Cum %] - [Plan Cum %] )
+// Format: +0.00%;-0.00%;0.00%
+
+// == 2 WBS & Discipline (status at cut-off) ===========================
+WBS Weight = SUM ( FactWBSStatus[Weight] )
+// Format: 0.00%
+
+WBS Plan % =
+DIVIDE ( SUMX ( FactWBSStatus, FactWBSStatus[Weight] * FactWBSStatus[PlanPct] ), [WBS Weight] )
+// Format: 0.00%   (total row = overall project, verified = 14.52% on 25-Sep-2026)
+
+WBS Actual % =
+DIVIDE ( SUMX ( FactWBSStatus, FactWBSStatus[Weight] * FactWBSStatus[ActualPct] ), [WBS Weight] )
+// Format: 0.00%
+
+WBS Variance % = [WBS Actual %] - [WBS Plan %]
+WBS SPI = DIVIDE ( [WBS Actual %], [WBS Plan %] )
+
+Discipline Weight = SUM ( FactDisciplineStatus[Weight] )
+// Format: 0.00%
+
+Discipline Plan % =
+DIVIDE ( SUMX ( FactDisciplineStatus, FactDisciplineStatus[Weight] * FactDisciplineStatus[PlanPct] ), [Discipline Weight] )
+// Format: 0.00%   NOTE: total row does not equal overall (see Check sheet) – turn totals off.
+
+Discipline Actual % =
+DIVIDE ( SUMX ( FactDisciplineStatus, FactDisciplineStatus[Weight] * FactDisciplineStatus[ActualPct] ), [Discipline Weight] )
+// Format: 0.00%
+
+Discipline SPI = DIVIDE ( [Discipline Actual %], [Discipline Plan %] )
+// Format: 0.00   (source sheet shows 1.00 where Plan = 0; here it is blank, which is correct)
+
+Unit Discipline Plan % =
+DIVIDE (
+    SUMX ( FactDisciplineByUnit, FactDisciplineByUnit[WeightInProject] * FactDisciplineByUnit[PlanPct] ),
+    SUM ( FactDisciplineByUnit[WeightInProject] ) )
+// Format: 0.0%
+
+Unit Discipline Actual % =
+DIVIDE (
+    SUMX ( FactDisciplineByUnit, FactDisciplineByUnit[WeightInProject] * FactDisciplineByUnit[ActualPct] ),
+    SUM ( FactDisciplineByUnit[WeightInProject] ) )
+// Format: 0.0%
+
+Unit Discipline Variance % = [Unit Discipline Actual %] - [Unit Discipline Plan %]
+
+// == 3 Major quantities ===============================================
+Qty Estimate   = SUM ( FactMajorItems[Estimate] )
+Qty Plan       = SUM ( FactMajorItems[PlanQty] )
+Qty Done       = SUM ( FactMajorItems[DoneQty] )
+Qty Remain     = SUM ( FactMajorItems[RemainQty] )
+Qty Work Front = SUM ( FactMajorItems[WorkFront] )
+// Format: #,##0   (do not add rows with different UOM: use the table per item)
+
+Qty Progress % = DIVIDE ( [Qty Done], [Qty Estimate] )
+// Format: 0.0%
+Qty SPI = DIVIDE ( [Qty Done], [Qty Plan] )
+// Format: 0.00
+
+Unit Qty Estimate     = SUM ( FactQuantityByUnit[Estimate] )
+Unit Qty DWG Received = SUM ( FactQuantityByUnit[DWGReceived] )
+Unit Qty Done         = SUM ( FactQuantityByUnit[Done] )
+Unit Qty Remain       = SUM ( FactQuantityByUnit[Remain] )
+Unit Qty Work Front   = SUM ( FactQuantityByUnit[WorkFront] )
+Unit Qty Progress %   = DIVIDE ( [Unit Qty Done], [Unit Qty Estimate] )
+
+// == 4 Contractors =====================================================
+Contractor Plan Cum % =
+IF ( HASONEVALUE ( DimContractor[ContractorCode] ), SUM ( FactSCurveContractor[CumPlan] ) )
+// Format: 0.0%   (axis: DimDate[YearMonth]; one period per month)
+
+Contractor Actual Cum % =
+IF ( HASONEVALUE ( DimContractor[ContractorCode] ), SUM ( FactSCurveContractor[CumActual] ) )
+// Format: 0.0%
+
+Contractor Last Actual Period =
+CALCULATE (
+    MAX ( FactSCurveContractor[PeriodEnd] ),
+    REMOVEFILTERS ( DimDate ),
+    NOT ISBLANK ( FactSCurveContractor[CumActual] )
+)
+
+Contractor Actual % @ Cut-off =
+VAR p = [Contractor Last Actual Period]
+RETURN
+    IF ( HASONEVALUE ( DimContractor[ContractorCode] ),
+        CALCULATE ( SUM ( FactSCurveContractor[CumActual] ), REMOVEFILTERS ( DimDate ), FactSCurveContractor[PeriodEnd] = p ) )
+// Format: 0.0%   (verified = Progress-SPI-Contractor!C)
+
+Contractor Plan % @ Cut-off =
+VAR p = [Contractor Last Actual Period]
+RETURN
+    IF ( HASONEVALUE ( DimContractor[ContractorCode] ),
+        CALCULATE ( SUM ( FactSCurveContractor[CumPlan] ), REMOVEFILTERS ( DimDate ), FactSCurveContractor[PeriodEnd] = p ) )
+// Format: 0.0%
+
+Contractor SPI @ Cut-off = DIVIDE ( [Contractor Actual % @ Cut-off], [Contractor Plan % @ Cut-off] )
+// Format: 0.00
+
+Contractor Monthly Plan %   = IF ( HASONEVALUE ( DimContractor[ContractorCode] ), SUM ( FactSCurveContractor[MonthlyPlan] ) )
+Contractor Monthly Actual % = IF ( HASONEVALUE ( DimContractor[ContractorCode] ), SUM ( FactSCurveContractor[MonthlyActual] ) )
+
+Item Estimate = SUM ( FactContractorQtyStatus[Estimate] )
+Item Plan     = SUM ( FactContractorQtyStatus[PlanQty] )
+Item Actual   = SUM ( FactContractorQtyStatus[ActualQty] )
+Item Remain   = SUM ( FactContractorQtyStatus[RemainQty] )
+Item Variance = [Item Actual] - [Item Plan]
+Item SPI      = DIVIDE ( [Item Actual], [Item Plan] )
+Item Progress % = DIVIDE ( [Item Actual], [Item Estimate] )
+
+Item Period Plan   = SUM ( FactContractorQtyPeriodic[PlanQty] )
+Item Period Actual = SUM ( FactContractorQtyPeriodic[ActualQty] )
+
+// == 5 Six-month window ===============================================
+Window Start  = CALCULATE ( MAX ( Snapshot[ValueDate] ), Snapshot[Key] = "Window6MStart" )
+Window Finish = CALCULATE ( MAX ( Snapshot[ValueDate] ), Snapshot[Key] = "Window6MFinish" )
+Window Remaining Days = CALCULATE ( SUM ( Snapshot[Value] ), Snapshot[Key] = "Window6MRemainingDays" )
+
+6M Plan Cum %     = SUM ( FactSCurve6M[CumPlan] )
+6M Actual Cum %   = SUM ( FactSCurve6M[CumActual] )
+6M Monthly Plan   = SUM ( FactSCurve6M[MonthlyPlan] )
+6M Monthly Actual = SUM ( FactSCurve6M[MonthlyActual] )
+
+6M Last Actual Period =
+CALCULATE ( MAX ( FactSCurve6M[PeriodEnd] ), REMOVEFILTERS ( DimDate ), NOT ISBLANK ( FactSCurve6M[CumActual] ) )
+
+6M SPI (calculated) =
+VAR p = [6M Last Actual Period]
+RETURN DIVIDE (
+    CALCULATE ( SUM ( FactSCurve6M[CumActual] ), REMOVEFILTERS ( DimDate ), FactSCurve6M[PeriodEnd] = p ),
+    CALCULATE ( SUM ( FactSCurve6M[CumPlan] ),   REMOVEFILTERS ( DimDate ), FactSCurve6M[PeriodEnd] = p ) )
+// Format: 0.00
+
+6M Item Plan Qty   = SUM ( FactItemMonthly6M[PlanQty] )
+6M Item Actual Qty = SUM ( FactItemMonthly6M[ActualQty] )
+
+6M Qty Plan   = SUM ( FactMajorItems6M[PlanQty6M] )
+6M Qty Done   = SUM ( FactMajorItems6M[DoneQty6M] )
+6M Qty Remain = SUM ( FactMajorItems6M[RemainQty6M] )
+6M Qty SPI    = DIVIDE ( [6M Qty Done], [6M Qty Plan] )
+
+SPI 6M (reported) =
+// values typed by hand in source sheet SPI-6M; shown until the formula is known
+VAR c = SELECTEDVALUE ( DimContractor[ContractorCode] )
+VAR k = SWITCH ( c, "SOL", "SPI6M_SoulehIran", "EHD", "SPI6M_Ehdas", "FRJ", "SPI6M_Sekaf", "SPI6M_Overall" )
+RETURN CALCULATE ( SUM ( Snapshot[Value] ), REMOVEFILTERS ( DimContractor ), Snapshot[Key] = k )
+
+// == 6 Manpower ========================================================
+Total Manhours (to date)      = CALCULATE ( SUM ( Snapshot[Value] ), Snapshot[Key] = "TotalManhours" )
+Total Machine-hours (to date) = CALCULATE ( SUM ( Snapshot[Value] ), Snapshot[Key] = "TotalMachineHours" )
+// Format: #,##0
+
+// ODCC sheet holds two plan versions over the same months (ContractPhase = "47 Monthly" / "60 Monthly").
+// Put FactManpowerODCC[ContractPhase] in a single-select slicer; the measures return blank if both are selected.
+ODCC Plan Version = SELECTEDVALUE ( FactManpowerODCC[ContractPhase] )
+
+ODCC Plan Manhours     = IF ( NOT ISBLANK ( [ODCC Plan Version] ), SUM ( FactManpowerODCC[PlanManhour] ) )
+ODCC Actual Manhours   = IF ( NOT ISBLANK ( [ODCC Plan Version] ), SUM ( FactManpowerODCC[ActualManhour] ) )
+ODCC Baseline Manhours = IF ( NOT ISBLANK ( [ODCC Plan Version] ), SUM ( FactManpowerODCC[PlanManhourBaseline] ) )
+ODCC Plan Headcount (avg) =
+IF ( NOT ISBLANK ( [ODCC Plan Version] ),
+    AVERAGEX ( VALUES ( DimDate[YearMonth] ), CALCULATE ( SUM ( FactManpowerODCC[PlanManDay] ) ) ) )
+ODCC Actual Headcount (avg) =
+IF ( NOT ISBLANK ( [ODCC Plan Version] ),
+    AVERAGEX ( VALUES ( DimDate[YearMonth] ), CALCULATE ( SUM ( FactManpowerODCC[ActualManDay] ) ) ) )
+// Headcount is per month: in a month cell it equals the source; at year level it is the monthly average.
+
+ODCC Dept Plan   = SUM ( FactODCCDepartment[PlanHeadcount] )
+ODCC Dept Actual = SUM ( FactODCCDepartment[ActualHeadcount] )
+ODCC Dept Fill % = DIVIDE ( [ODCC Dept Actual], [ODCC Dept Plan] )
+
+Contractor Manpower = SUM ( FactManpowerContractor[Manpower] )
+// Format: #,##0   (verified grand total = 238,889)
+Contractor Manpower Share % =
+DIVIDE ( [Contractor Manpower], CALCULATE ( [Contractor Manpower], REMOVEFILTERS ( DimContractor ) ) )
+
+// == 9 Formatting helpers =============================================
+// Use with Format > Conditional formatting > Field value.
+SPI Color =
+VAR s = [SPI (physical) @ Cut-off]
+RETURN SWITCH ( TRUE (), ISBLANK ( s ), "#9AA5B1", s < 0.95, "#C0392B", s < 1, "#D99A00", "#2E7D32" )
+// For a specific visual, copy this measure and replace s with that visual's SPI measure, e.g.:
+Contractor SPI Color =
+VAR s = [Contractor SPI @ Cut-off]
+RETURN SWITCH ( TRUE (), ISBLANK ( s ), "#9AA5B1", s < 0.95, "#C0392B", s < 1, "#D99A00", "#2E7D32" )
+
+WBS SPI Color =
+VAR s = [WBS SPI]
+RETURN SWITCH ( TRUE (), ISBLANK ( s ), "#9AA5B1", s < 0.95, "#C0392B", s < 1, "#D99A00", "#2E7D32" )
+
+Variance Color =
+VAR v = [Variance % @ Cut-off]
+RETURN IF ( v < 0, "#C0392B", "#2E7D32" )

@@ -1,0 +1,327 @@
+<title>ARUP 2-2 Management Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: navy header band + tab strip; each tab is one Power BI page as a 12-col card grid (16:9 at desktop, stacked on phone) */
+:root{
+  --navy:#1F3864; --navy-2:#2A4A7F; --band-fg:#FFFFFF; --band-muted:#B9C7DE;
+  --bg:#F2F4F8; --surface:#FFFFFF; --line:#DCE2EB; --grid:#E8ECF2;
+  --ink:#1B2A41; --ink-2:#4D5B6E; --ink-3:#7D8898;
+  --actual:#2A5CAA; --plan:#C8961E; --third:#6E9BE0;
+  --good:#2E7D32; --warn:#B77F00; --bad:#C0392B; --none:#8A95A5;
+  --good-bg:#E6F2E7; --warn-bg:#FBF1DC; --bad-bg:#F9E4E1; --none-bg:#EDF0F4;
+  --f-display:"Barlow Semi Condensed","Segoe UI",Arial,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --navy:#14223D; --navy-2:#22365C; --band-fg:#F1F4FA; --band-muted:#9FB0CC;
+  --bg:#0F1522; --surface:#172033; --line:#2A3650; --grid:#222C41;
+  --ink:#E7ECF4; --ink-2:#B3BDCC; --ink-3:#8590A3;
+  --actual:#5B8BDB; --plan:#B8891A; --third:#6D90D4;
+  --good:#5DBB63; --warn:#E0A92E; --bad:#E5675A; --none:#8A95A5;
+  --good-bg:#1D3424; --warn-bg:#3A2F14; --bad-bg:#3D211E; --none-bg:#232C3D; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --navy:#14223D; --navy-2:#22365C; --band-fg:#F1F4FA; --band-muted:#9FB0CC;
+  --bg:#0F1522; --surface:#172033; --line:#2A3650; --grid:#222C41;
+  --ink:#E7ECF4; --ink-2:#B3BDCC; --ink-3:#8590A3;
+  --actual:#5B8BDB; --plan:#B8891A; --third:#6D90D4;
+  --good:#5DBB63; --warn:#E0A92E; --bad:#E5675A; --none:#8A95A5;
+  --good-bg:#1D3424; --warn-bg:#3A2F14; --bad-bg:#3D211E; --none-bg:#232C3D; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+.band{background:var(--navy);color:var(--band-fg)}
+.wrap{max-width:1360px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.head{display:flex;flex-wrap:wrap;align-items:center;gap:16px 24px;padding-block:16px 12px}
+.mark{width:44px;height:44px;border:2px solid var(--band-muted);border-radius:6px;display:grid;place-items:center;font:700 13px/1 var(--f-display);letter-spacing:.06em}
+.ttl{flex:1 1 320px;min-width:0}
+.ttl h1{margin:0;font:600 24px/1.15 var(--f-display);letter-spacing:.01em;text-wrap:balance}
+.ttl p{margin:2px 0 0;color:var(--band-muted);font-size:13px}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--band-muted);border-radius:999px;padding:5px 12px;font-size:13px;white-space:nowrap}
+.chip b{font-weight:600}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;padding-block:0;scrollbar-width:thin}
+nav.tabs button{appearance:none;border:0;background:transparent;color:var(--band-muted);font:600 14px var(--f-display);letter-spacing:.03em;padding:10px 14px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--band-fg);border-bottom-color:var(--plan)}
+nav.tabs button:focus-visible{outline:2px solid var(--band-fg);outline-offset:-2px}
+main{padding-block:20px 40px}
+.note{font-size:13px;color:var(--ink-2);margin:0 0 16px;max-width:80ch}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px 12px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.card h3{margin:0;font:600 15px/1.2 var(--f-display);color:var(--ink);letter-spacing:.01em}
+.spec{margin-top:auto;padding-top:6px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--ink-3)}
+.spec code{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--ink-2)}
+.c2{grid-column:span 2}.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
+@media (max-width:1100px){.c2,.c3{grid-column:span 4}.c4,.c5,.c7,.c8{grid-column:span 6}}
+@media (max-width:720px){.grid>*{grid-column:1/-1!important}}
+.kpi .lab{font-size:12px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em}
+.kpi .val{font:600 30px/1.05 var(--f-display);color:var(--ink);font-variant-numeric:tabular-nums}
+.kpi .sub{font-size:12px;color:var(--ink-3)}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.p-good{color:var(--good);background:var(--good-bg)}.p-warn{color:var(--warn);background:var(--warn-bg)}.p-bad{color:var(--bad);background:var(--bad-bg)}.p-none{color:var(--none);background:var(--none-bg)}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th{background:var(--navy);color:var(--band-fg);font:600 12.5px var(--f-body);text-align:right;padding:6px 8px;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:6px 8px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+tr:nth-child(even) td{background:color-mix(in srgb,var(--bg) 55%,var(--surface))}
+.bar{position:relative;height:6px;background:var(--grid);border-radius:3px;min-width:60px}
+.bar>i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--actual)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:3px;border-radius:2px;display:inline-block}
+.sw.sq{height:10px;width:10px;border-radius:2px}
+.sw.dash{background:repeating-linear-gradient(90deg,var(--plan) 0 5px,transparent 5px 8px)!important}
+.ctl{display:flex;flex-wrap:wrap;gap:6px}
+.ctl button{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:4px 11px;font:500 12.5px var(--f-body);cursor:pointer}
+.ctl button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:var(--band-fg)}
+.ctl button:focus-visible{outline:2px solid var(--actual);outline-offset:2px}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{fill:var(--ink-3);font:11px var(--f-body)}
+.tip{position:fixed;pointer-events:none;z-index:20;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:7px 10px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.14);max-width:260px;font-variant-numeric:tabular-nums}
+.tip b{display:block;font-weight:600;margin-bottom:2px}
+.flag{font-size:12px;color:var(--warn);background:var(--warn-bg);border-radius:6px;padding:6px 10px}
+.heat td.h{color:var(--ink);text-align:center;min-width:44px}
+.muted{color:var(--ink-3)}
+@media (prefers-reduced-motion:no-preference){.card{transition:border-color .15s}.card:hover{border-color:color-mix(in srgb,var(--actual) 40%,var(--line))}}
+</style>
+
+<div class="band">
+  <div class="wrap">
+    <div class="head">
+      <div class="mark" aria-hidden="true">ODCC</div>
+      <div class="ttl">
+        <h1>ARUP Phase 2-2 · Management Report</h1>
+        <p>Abadan Refinery Upgrading Project · Planning &amp; Project Control (PPC)</p>
+      </div>
+      <span class="chip">Cut-off <b id="cutoff"></b></span>
+      <span class="chip">Data <b>MGR-25-SEP-2026</b></span>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Report pages" id="tabs"></nav>
+  </div>
+</div>
+<main class="wrap" id="pages"></main>
+<div class="tip" id="tip" hidden></div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+const D = JSON.parse(document.getElementById('data').textContent);
+const $ = (s, el=document) => el.querySelector(s);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const pct = (v, d=1) => v==null ? '–' : (v*100).toFixed(d) + '%';
+const num = (v, d=0) => v==null ? '–' : Number(v).toLocaleString('en-US', {maximumFractionDigits:d, minimumFractionDigits:d});
+const fmtDate = s => { const d=new Date(s+'T00:00:00'); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); };
+const mon = s => { const d=new Date(s+'T00:00:00'); return d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}); };
+const div = (a,b) => (a==null||!b) ? null : a/b;
+const spiTxt = s => (s<1 ? Math.floor(s*100)/100 : Math.round(s*100)/100).toFixed(2);
+function spiPill(s, compact){ if(s==null) return '<span class="pill p-none">n/a</span>';
+  const c = s<0.95?'p-bad':s<1?'p-warn':'p-good'; const w = s<0.95?'Behind':s<1?'Watch':'On track';
+  return `<span class="pill ${c}" title="${w}">${spiTxt(s)}${compact?'':' · '+w}</span>`; }
+function varTxt(v){ if(v==null) return '–'; const c = v<0?'var(--bad)':'var(--good)'; return `<span style="color:${c}">${v>0?'+':''}${(v*100).toFixed(2)}%</span>`; }
+const tip = $('#tip');
+function showTip(e, html){ tip.innerHTML = html; tip.hidden = false;
+  const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8), y = Math.min(e.clientY + 14, innerHeight - tip.offsetHeight - 8);
+  tip.style.left = x + 'px'; tip.style.top = y + 'px'; }
+const hideTip = () => tip.hidden = true;
+const NS = 'http://www.w3.org/2000/svg';
+const el = (t, a={}, p) => { const n = document.createElementNS(NS, t); for (const k in a) n.setAttribute(k, a[k]); if (p) p.appendChild(n); return n; };
+
+/* ---------- line chart (dates on x, 0..1 on y) ---------- */
+function lineChart(host, {dates, series, yMax=null, cutoff=null, yFmt=v=>pct(v,0), h=300}){
+  host.innerHTML=''; const W = Math.max(320, host.clientWidth || 760), H = h, m = {l:44, r:16, t:12, b:28};
+  const svg = el('svg', {viewBox:`0 0 ${W} ${H}`, role:'img'}, host);
+  const xs = dates.map(d => new Date(d+'T00:00:00').getTime());
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const all = series.flatMap(s => s.values).filter(v => v!=null);
+  const ym = yMax ?? Math.max(0.0001, ...all) * 1.08;
+  const X = t => m.l + (t - x0) / (x1 - x0 || 1) * (W - m.l - m.r);
+  const Y = v => H - m.b - v / ym * (H - m.t - m.b);
+  for (let i=0;i<=4;i++){ const v = ym*i/4, y = Y(v);
+    el('line',{x1:m.l,x2:W-m.r,y1:y,y2:y,stroke:css('--grid'),'stroke-width':1},svg);
+    el('text',{x:m.l-6,y:y+4,'text-anchor':'end'},svg).textContent = yFmt(v); }
+  const step = Math.max(1, Math.ceil(dates.length/8));
+  dates.forEach((d,i)=>{ if(i%step) return; el('text',{x:X(xs[i]),y:H-8,'text-anchor':'middle'},svg).textContent = mon(d); });
+  if (cutoff){ const t = new Date(cutoff+'T00:00:00').getTime(); if (t>=x0 && t<=x1){ const cx = X(t);
+    el('line',{x1:cx,x2:cx,y1:m.t,y2:H-m.b,stroke:css('--ink-3'),'stroke-dasharray':'3 3'},svg);
+    el('text',{x:cx+4,y:m.t+10},svg).textContent = 'Cut-off'; } }
+  series.forEach(s => { let d=''; s.values.forEach((v,i)=>{ if(v==null) return; d += (d?'L':'M') + X(xs[i]).toFixed(1) + ' ' + Y(v).toFixed(1); });
+    el('path',{d, fill:'none', stroke:css(s.color), 'stroke-width':2.5, 'stroke-dasharray': s.dash?'6 4':'none', 'stroke-linejoin':'round','stroke-linecap':'round'},svg);
+    const li = s.values.map((v,i)=>v!=null?i:-1).filter(i=>i>=0).pop();
+    if (li!=null){ el('circle',{cx:X(xs[li]),cy:Y(s.values[li]),r:4,fill:css(s.color),stroke:css('--surface'),'stroke-width':2},svg);
+      const t = el('text',{x:X(xs[li])+(li>dates.length*0.8?-8:8),y:Y(s.values[li])-8,'text-anchor':li>dates.length*0.8?'end':'start'},svg);
+      t.textContent = `${s.name} ${yFmt(s.values[li])}`; t.style.fill = css('--ink-2'); t.style.fontWeight = 600; } });
+  const cross = el('line',{y1:m.t,y2:H-m.b,stroke:css('--ink-3'),'stroke-width':1,visibility:'hidden'},svg);
+  const hit = el('rect',{x:m.l,y:m.t,width:W-m.l-m.r,height:H-m.t-m.b,fill:'transparent'},svg);
+  hit.addEventListener('pointermove', e => { const r = svg.getBoundingClientRect(); const px = (e.clientX - r.left) * W / r.width;
+    let bi = 0, bd = 1e18; xs.forEach((t,i)=>{ const dd = Math.abs(X(t)-px); if (dd<bd){bd=dd;bi=i;} });
+    cross.setAttribute('x1',X(xs[bi])); cross.setAttribute('x2',X(xs[bi])); cross.setAttribute('visibility','visible');
+    showTip(e, `<b>${fmtDate(dates[bi])}</b>` + series.map(s=>`${s.name}: ${yFmt(s.values[bi]) ?? '–'}`).join('<br>')
+      + (series.length===2 && series[0].values[bi]!=null && series[1].values[bi] ? `<br>SPI: ${(series[0].values[bi]/series[1].values[bi]).toFixed(2)}`:'')); });
+  hit.addEventListener('pointerleave', ()=>{ cross.setAttribute('visibility','hidden'); hideTip(); });
+}
+
+/* ---------- grouped bars (horizontal) ---------- */
+function hBars(host, {cats, series, fmt=v=>pct(v,1), rowH=26}){
+  host.innerHTML=''; const W=Math.max(320, host.clientWidth||760), m={l:Math.min(200, W*0.34),r:96,t:4,b:4}, gh=rowH, H=m.t+m.b+cats.length*gh;
+  const svg = el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img'},host);
+  const mx = Math.max(0.0001, ...series.flatMap(s=>s.values).filter(v=>v!=null));
+  const bw = (gh-8)/series.length;
+  cats.forEach((c,i)=>{ const y0 = m.t + i*gh;
+    const lt = el('text',{x:m.l-8,y:y0+gh/2+4,'text-anchor':'end'},svg); lt.textContent = c; lt.style.fill = css('--ink-2');
+    series.forEach((s,j)=>{ const v = s.values[i]; const w = v==null?0:v/mx*(W-m.l-m.r); const y = y0+4+j*bw;
+      const r = el('rect',{x:m.l,y:y+1,width:Math.max(w,v?2:0),height:bw-2,rx:2,fill:css(s.color)},svg);
+      r.addEventListener('pointermove',e=>showTip(e,`<b>${c}</b>${series.map(ss=>`${ss.name}: ${fmt(ss.values[i])}`).join('<br>')}`)); r.addEventListener('pointerleave',hideTip);
+      if (j===series.length-1 || series.length===1){ } });
+    const last = series[0].values[i]; const tv = el('text',{x:m.l+ (Math.max(...series.map(s=>s.values[i]??0))/mx)*(W-m.l-m.r)+6,y:y0+gh/2+4},svg);
+    tv.textContent = series.map(s=>fmt(s.values[i])).join(' / '); });
+}
+
+/* ---------- grouped / stacked columns by period ---------- */
+function columns(host, {cats, series, stacked=false, fmt=v=>num(v), h=260, labelEvery=1}){
+  host.innerHTML=''; const W=Math.max(320, host.clientWidth||760),H=h,m={l:52,r:10,t:10,b:28};
+  const svg = el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img'},host);
+  const tot = cats.map((_,i)=> stacked ? series.reduce((a,s)=>a+(s.values[i]||0),0) : Math.max(...series.map(s=>s.values[i]||0)));
+  const ym = Math.max(1, ...tot)*1.08, Y = v => H-m.b - v/ym*(H-m.t-m.b);
+  for (let i=0;i<=4;i++){ const v=ym*i/4,y=Y(v); el('line',{x1:m.l,x2:W-m.r,y1:y,y2:y,stroke:css('--grid')},svg);
+    el('text',{x:m.l-6,y:y+4,'text-anchor':'end'},svg).textContent = v>=1000? num(v/1000,0)+'k' : (v<=1.5 && ym<=1.5 ? pct(v,0) : num(v)); }
+  const gw = (W-m.l-m.r)/cats.length, inner = gw*0.72;
+  cats.forEach((c,i)=>{ const gx = m.l + i*gw + (gw-inner)/2; let acc = 0;
+    series.forEach((s,j)=>{ const v = s.values[i]||0; let x,y,w,hh;
+      if (stacked){ x=gx; w=inner; y=Y(acc+v); hh=Y(acc)-Y(acc+v); acc+=v; if(hh>2){hh-=2;} }
+      else { w=inner/series.length; x=gx+j*w; y=Y(v); hh=Y(0)-Y(v); w-=2; }
+      const r = el('rect',{x,y,width:Math.max(w,1),height:Math.max(hh,0),rx:stacked?1:2,fill:css(s.color)},svg);
+      r.addEventListener('pointermove',e=>showTip(e,`<b>${c}</b>${series.map(ss=>`${ss.name}: ${fmt(ss.values[i])}`).join('<br>')}`)); r.addEventListener('pointerleave',hideTip); });
+    if (i%labelEvery===0) el('text',{x:m.l+i*gw+gw/2,y:H-8,'text-anchor':'middle'},svg).textContent = c; });
+}
+function legend(items){ return `<div class="legend">${items.map(([n,c,t])=>`<span><i class="sw ${t||''}" style="background:var(${c})"></i>${n}</span>`).join('')}</div>`; }
+function table(cols, rows){ return `<div class="tbl"><table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`; }
+const card = (cls, title, body, spec) => `<section class="card ${cls}">${title?`<h3>${title}</h3>`:''}${body}${spec?`<div class="spec">${spec}</div>`:''}</section>`;
+const kpi = (cls, lab, val, sub, spec) => `<section class="card kpi ${cls}"><div class="lab">${lab}</div><div class="val">${val}</div>${sub?`<div class="sub">${sub}</div>`:''}${spec?`<div class="spec">${spec}</div>`:''}</section>`;
+
+const S = D.snap, CUT = S.CutOffDate;
+$('#cutoff').textContent = fmtDate(CUT);
+const CNAME = {SOL:'Souleh Iran', FRJ:'Sekaf & Farjoud', EHD:'Ehdas', EXR:'EXIR', ALL:'Overall'};
+
+/* ================= pages ================= */
+const PAGES = [
+ ['overview','Executive Summary', pg => {
+   const spi = div(S.OverallActualPct, S.OverallPlanPct);
+   pg.innerHTML = `<p class="note">One page answers “where are we on ${fmtDate(CUT)}”. Every KPI comes from one measure; SPI is Actual ÷ Plan and is never summed.</p>
+   <div class="grid">
+   ${kpi('c2','Plan % (cum.)',pct(S.OverallPlanPct,2),'Overall project','<code>[Plan % @ Cut-off]</code>')}
+   ${kpi('c2','Actual % (cum.)',pct(S.OverallActualPct,2),'Overall project','<code>[Actual % @ Cut-off]</code>')}
+   ${kpi('c2','Variance',varTxt(S.OverallActualPct-S.OverallPlanPct),'Actual − Plan','<code>[Variance % @ Cut-off]</code>')}
+   ${kpi('c2','SPI (physical)',spiTxt(spi),spiPill(spi),'<code>[SPI (physical) @ Cut-off]</code>')}
+   ${kpi('c2','Man-hours to date',num(S.TotalManhours),'ODCC + contractors','<code>[Total Manhours (to date)]</code>')}
+   ${kpi('c2','Machine-hours to date',num(S.TotalMachineHours),'All equipment','<code>[Total Machine-hours (to date)]</code>')}
+   ${card('c7','Overall S-curve',`<div class="ctl" id="scope"></div>${legend([['Actual cum.','--actual'],['Plan cum.','--plan','dash']])}<div id="sc"></div>`,'Line chart · X: <code>DimDate[Date]</code> · Y: <code>[Actual Cum %]</code>, <code>[Plan Cum %]</code> · Scope slicer: <code>DimScope[ScopeName]</code> (single select) · constant line at cut-off')}
+   ${card('c5','Level-1 WBS status', table(['WBS','Weight','Plan','Actual','SPI'], D.wbs.map(([n,w,p,a])=>[n,pct(w,1),pct(p,1),pct(a,1),spiPill(p?a/p:null,true)])) + `<p class="muted" style="margin:0;font-size:12px">Weighted total reproduces the overall ${pct(S.OverallPlanPct,2)} / ${pct(S.OverallActualPct,2)} exactly.</p>`,'Table · <code>FactWBSStatus[WBSName]</code>, <code>[WBS Weight]</code>, <code>[WBS Plan %]</code>, <code>[WBS Actual %]</code>, <code>[WBS SPI]</code> + background colour by <code>[WBS SPI Color]</code>')}
+   ${card('c12','Discipline progress — Plan vs Actual',`${legend([['Actual','--actual','sq'],['Plan','--plan','sq']])}<div id="disc"></div>`,'Clustered bar · Y: <code>DimDiscipline[Discipline]</code> · X: <code>[Discipline Actual %]</code>, <code>[Discipline Plan %]</code> · tooltip adds <code>[Discipline Weight]</code>, <code>[Discipline SPI]</code>')}
+   </div>`;
+   const ctl = $('#scope', pg); let cur = 'Overall';
+   const draw = () => { const c = D.curve[cur]; lineChart($('#sc',pg),{dates:c.map(r=>r[0]),series:[{name:'Actual',color:'--actual',values:c.map(r=>r[2])},{name:'Plan',color:'--plan',dash:true,values:c.map(r=>r[1])}],yMax:1,cutoff:CUT});
+     ctl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.k===cur)); };
+   D.scopes.forEach(([k,n])=>{ const b=document.createElement('button'); b.type='button'; b.dataset.k=k; b.textContent=n; b.onclick=()=>{cur=k;draw();}; ctl.appendChild(b); });
+   draw();
+   const ds = D.disc.filter(r=>r[2]!=null||r[3]!=null);
+   hBars($('#disc',pg),{cats:ds.map(r=>r[0]),series:[{name:'Actual',color:'--actual',values:ds.map(r=>r[3])},{name:'Plan',color:'--plan',values:ds.map(r=>r[2])}]});
+ }],
+ ['units','Discipline × Unit', pg => {
+   const units = [...new Set(D.du.map(r=>r[0]))];
+   const discs = D.disc.map(r=>r[0]).filter(d=>D.du.some(r=>r[1]===d));
+   const cell = (u,d) => D.du.find(r=>r[0]===u && r[1]===d);
+   const shade = v => v==null? 'transparent' : `color-mix(in srgb, var(--actual) ${Math.round(8+v*72)}%, var(--surface))`;
+   const ink = v => v!=null && v>0.55 ? 'color:#fff' : '';
+   pg.innerHTML = `<p class="note">Replaces the per-unit gauges with one heat-map matrix: rows = process unit, columns = discipline, cell = Actual %. Hover a cell for Plan, Actual and variance.</p>
+   <div class="grid">
+   ${card('c12','Actual % by unit and discipline',`<div class="tbl"><table class="heat"><thead><tr><th>Unit</th>${discs.map(d=>`<th style="text-align:center">${d.replace(' (Fix Equipment)','').replace('Process Machinery (Rotary)','Rotary').replace('Insulation & Painting','Insul. & Paint').replace('Heat Transfer Equipment','Heat Transfer')}</th>`).join('')}</tr></thead><tbody>${units.map(u=>`<tr><td>Unit ${u}</td>${discs.map(d=>{const c=cell(u,d); if(!c) return '<td class="h muted">·</td>'; return `<td class="h" data-u="${u}" data-d="${d}" style="background:${shade(c[4])};${ink(c[4])}">${c[4]==null?'–':Math.round(c[4]*100)}</td>`}).join('')}</tr>`).join('')}</tbody></table></div>`,'Matrix · Rows: <code>DimUnit[UnitLabel]</code> · Columns: <code>DimDiscipline[Discipline]</code> · Values: <code>[Unit Discipline Actual %]</code> · Conditional formatting: background gradient (white → navy) · tooltip: <code>[Unit Discipline Plan %]</code>, <code>[Unit Discipline Variance %]</code>')}
+   </div>`;
+   pg.querySelectorAll('td.h[data-u]').forEach(td=>{ const c = cell(td.dataset.u, td.dataset.d);
+     td.addEventListener('pointermove',e=>showTip(e,`<b>Unit ${c[0]} · ${c[1]}</b>Plan: ${pct(c[3])}<br>Actual: ${pct(c[4])}<br>Variance: ${pct((c[4]??0)-(c[3]??0))}<br>Weight in project: ${pct(c[2],3)}`)); td.addEventListener('pointerleave',hideTip); });
+ }],
+ ['quantities','Major Quantities', pg => {
+   const rows = D.major.map(([i,u,e,p,d,rm,wf])=>[i,u,num(e),p==null?'–':num(p),d==null?'–':num(d),num(rm),wf==null?'–':num(wf),
+      `<div style="display:flex;align-items:center;gap:8px"><div class="bar" style="flex:1"><i style="width:${Math.min(100,(d||0)/e*100)}%"></i></div>${pct((d||0)/e,1)}</div>`, spiPill(p? (d||0)/p : null)]);
+   const pile = D.qty.filter(r=>r[0]==='Pile'), conc = D.qty.filter(r=>r[0]==='Concrete');
+   pg.innerHTML = `<p class="note">Quantities in their own units: never added across items. Progress = Done ÷ Estimate; SPI = Done ÷ Plan.</p>
+   <div class="grid">
+   ${card('c12','Major construction items — status to date', table(['Item','UOM','Estimate','Plan to date','Done','Remain','Work front','Progress','SPI'], rows),'Table · <code>FactMajorItems[Item]</code>, <code>[UOM]</code>, <code>[Qty Estimate]</code>, <code>[Qty Plan]</code>, <code>[Qty Done]</code>, <code>[Qty Remain]</code>, <code>[Qty Work Front]</code>, <code>[Qty Progress %]</code> (data bars), <code>[Qty SPI]</code> (icons)')}
+   ${card('c6','Piles by unit — Done, Work front, Remain',`${legend([['Done','--actual','sq'],['Work front','--third','sq'],['Remain','--plan','sq']])}<div id="pile"></div>`,'Stacked column · X: <code>DimUnit[UnitLabel]</code> · <code>[Unit Qty Done]</code>, <code>[Unit Qty Work Front]</code>, remain without front · filter Activity = Pile')}
+   ${card('c6','Concrete by unit (m³) — Done, Work front, Remain',`${legend([['Done','--actual','sq'],['Work front','--third','sq'],['Remain','--plan','sq']])}<div id="conc"></div><div class="flag">Source check: EST2!D38 (Concrete subtotal, Process &amp; Utility) is typed as 118,115 m³; its unit rows add to 91,721 m³. This page uses the unit rows. Please confirm.</div>`,'Same visual · filter Activity = Concrete')}
+   </div>`;
+   const stack = (host, rs) => columns(host,{cats:rs.map(r=>r[2]),stacked:true,series:[{name:'Done',color:'--actual',values:rs.map(r=>r[5])},{name:'Work front',color:'--third',values:rs.map(r=>r[7])},{name:'Remain (no front)',color:'--plan',values:rs.map(r=>Math.max(0,(r[6]||0)-(r[7]||0)))}],h:240});
+   const lab = rs => rs.map(r=>[r[0],r[1],r[2]+(r[1].startsWith('Tank')?' T':r[1]==='GTG'?' GTG':''),...r.slice(3)]);
+   stack($('#pile',pg), lab(pile)); stack($('#conc',pg), lab(conc.filter(r=>r[3]>0)));
+ }],
+ ['contractors','Contractors', pg => {
+   const codes = ['SOL','FRJ','EHD'];
+   const stat = codes.map(c=>{ const rs = D.cscurve.filter(r=>r[0]===c && r[5]!=null); const l = rs[rs.length-1]; return [c,l[1],l[4],l[5]]; });
+   pg.innerHTML = `<p class="note">Status at the last reported period of each contractor S-curve. Matches the source sheet Progress-SPI-Contractor exactly.</p>
+   <div class="grid">
+   ${stat.map(([c,d,p,a])=>kpi('c4',CNAME[c],pct(a,1),`Plan ${pct(p,1)} · ${spiPill(a/p)}`,'Card · <code>[Contractor Actual % @ Cut-off]</code> + <code>[Contractor SPI @ Cut-off]</code>')).join('')}
+   ${card('c7','Contractor S-curve',`<div class="ctl" id="cc"></div>${legend([['Actual cum.','--actual'],['Plan cum.','--plan','dash']])}<div id="csc"></div>`,'Line chart · X: <code>DimDate[YearMonth]</code> · <code>[Contractor Actual Cum %]</code>, <code>[Contractor Plan Cum %]</code> · slicer <code>DimContractor[ContractorName]</code> single-select (or small multiples by contractor)')}
+   ${card('c5','Work items — status to date',`<div id="citems"></div>`,'Table · <code>DimContractorItem[Item]</code>, <code>[UOM]</code>, <code>[Item Estimate]</code>, <code>[Item Plan]</code>, <code>[Item Actual]</code>, <code>[Item SPI]</code> · filtered by the same contractor slicer')}
+   </div>`;
+   const ctl=$('#cc',pg); let cur='SOL';
+   const draw=()=>{ const rs=D.cscurve.filter(r=>r[0]===cur);
+     lineChart($('#csc',pg),{dates:rs.map(r=>r[1]),series:[{name:'Actual',color:'--actual',values:rs.map(r=>r[5])},{name:'Plan',color:'--plan',dash:true,values:rs.map(r=>r[4])}],yMax:1,cutoff:CUT,h:280});
+     $('#citems',pg).innerHTML = table(['Item','UOM','Estimate','Plan','Actual','SPI'], D.citem.filter(r=>r[0]===cur).map(([c,i,u,e,p,a])=>[i,u,num(e),num(p),num(a),spiPill(p? a/p : null,true)]));
+     ctl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===cur)); };
+   codes.forEach(c=>{ const b=document.createElement('button'); b.type='button'; b.dataset.k=c; b.textContent=CNAME[c]; b.onclick=()=>{cur=c;draw();}; ctl.appendChild(b); });
+   draw();
+ }],
+ ['window','6-Month Window', pg => {
+   const items = [...new Set(D.i6.map(r=>r[1]))];
+   const last = D.s6.filter(r=>r[4]!=null).pop();
+   const spi6 = last ? last[4]/last[3] : null;
+   pg.innerHTML = `<p class="note">Window ${fmtDate(S.Window6MStart)} → ${fmtDate(S.Window6MFinish)} · ${S.Window6MRemainingDays} days remaining at cut-off.</p>
+   <div class="grid">
+   ${kpi('c3','Window SPI (calculated)',spi6?spi6.toFixed(2):'–',spiPill(spi6)+` <span class="muted">at ${last?fmtDate(last[0]):''}</span>`,'<code>[6M SPI (calculated)]</code>')}
+   ${kpi('c3','Window SPI (reported)',S.SPI6M_Overall.toFixed(2),'Typed in source sheet SPI-6M','<code>[SPI 6M (reported)]</code> — replace once the formula is known')}
+   ${kpi('c3','Days remaining',num(S.Window6MRemainingDays),'to '+fmtDate(S.Window6MFinish),'<code>[Window Remaining Days]</code>')}
+   ${kpi('c3','Reported SPI by contractor',`<span style="font-size:18px">SOL ${S.SPI6M_SoulehIran} · EHD ${S.SPI6M_Ehdas} · FRJ ${S.SPI6M_Sekaf}</span>`,'Typed values (no formula in source)','Multi-row card')}
+   ${card('c6','Window S-curve',`${legend([['Actual cum.','--actual'],['Plan cum.','--plan','dash']])}<div id="w6"></div>`,'Line chart · <code>[6M Actual Cum %]</code>, <code>[6M Plan Cum %]</code> over <code>DimDate[YearMonth]</code>')}
+   ${card('c6','Key items per month — Plan vs Actual',`<div class="ctl" id="it"></div>${legend([['Actual','--actual','sq'],['Plan','--plan','sq']])}<div id="i6"></div>`,'One clustered column with small multiples by <code>FactItemMonthly6M[Item]</code> (replaces 3 separate charts)')}
+   ${card('c12','Window quantities by contractor', table(['Contractor','Item','UOM','Estimate (6M)','Plan','Done','Remain','SPI'], D.m6.map(([c,i,u,e,p,d,rm])=>[CNAME[c]||c,i,u,num(e),num(p),num(d,1),num(rm),spiPill(p? d/p : null,true)])),'Table · <code>DimContractor[ContractorName]</code>, <code>FactMajorItems6M[Item]</code>, <code>[6M Qty Plan]</code>, <code>[6M Qty Done]</code>, <code>[6M Qty Remain]</code>, <code>[6M Qty SPI]</code>')}
+   </div>`;
+   lineChart($('#w6',pg),{dates:D.s6.map(r=>r[0]),series:[{name:'Actual',color:'--actual',values:D.s6.map(r=>r[4])},{name:'Plan',color:'--plan',dash:true,values:D.s6.map(r=>r[3])}],cutoff:CUT,h:260,yFmt:v=>pct(v,1)});
+   const ctl=$('#it',pg); let cur=items[0];
+   const draw=()=>{ const rs=D.i6.filter(r=>r[1]===cur); columns($('#i6',pg),{cats:rs.map(r=>mon(r[0])),series:[{name:'Actual',color:'--actual',values:rs.map(r=>r[3])},{name:'Plan',color:'--plan',values:rs.map(r=>r[2])}],h:230});
+     ctl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===cur)); };
+   items.forEach(c=>{ const b=document.createElement('button'); b.type='button'; b.dataset.k=c; b.textContent=c; b.onclick=()=>{cur=c;draw();}; ctl.appendChild(b); });
+   draw();
+ }],
+ ['manpower','Manpower', pg => {
+   let phase = D.phases[0];
+   const months = [...new Set(D.cmp.map(r=>r[0]))];
+   const byC = c => months.map(m=>D.cmp.filter(r=>r[0]===m && r[1]===c).reduce((a,r)=>a+r[3],0));
+   const tot = c => D.cmp.filter(r=>r[1]===c).reduce((a,r)=>a+r[3],0);
+   const grand = D.cmp.reduce((a,r)=>a+r[3],0);
+   pg.innerHTML = `<p class="note">ODCC staff histogram (plan vs actual headcount per month) and contractor manpower as reported. EXIR is kept as history.</p>
+   <div class="grid">
+   ${kpi('c3','Man-hours to date',num(S.TotalManhours),'ODCC + contractors','<code>[Total Manhours (to date)]</code>')}
+   ${['SOL','FRJ','EHD'].map(c=>kpi('c3',CNAME[c]+' — manpower total',num(tot(c)),pct(tot(c)/grand,1)+' of contractor total','<code>[Contractor Manpower]</code>, <code>[Contractor Manpower Share %]</code>')).join('')}
+   ${card('c7','ODCC histogram — headcount per month',`<div class="ctl" id="ph"></div>${legend([['Actual','--actual','sq'],['Plan','--plan','sq']])}<div id="odh"></div>`,'Clustered column · X: <code>DimDate[YearMonth]</code> (or <code>JYearMonth</code> for Persian months) · <code>[ODCC Actual Headcount (avg)]</code>, <code>[ODCC Plan Headcount (avg)]</code> · single-select slicer <code>FactManpowerODCC[ContractPhase]</code> (two plans over the same months, never added)')}
+   ${card('c5','ODCC departments — headcount',table(['Department','Plan','Actual','Fill'], D.dept.map(([d,p,a])=>[d,num(p),num(a),`<div style="display:flex;align-items:center;gap:8px"><div class="bar" style="flex:1"><i style="width:${Math.min(100,a/p*100)}%"></i></div>${pct(a/p,0)}</div>`])),'Table · <code>FactODCCDepartment[Department]</code>, <code>[ODCC Dept Plan]</code>, <code>[ODCC Dept Actual]</code>, <code>[ODCC Dept Fill %]</code> (data bars)')}
+   ${card('c12','Contractor manpower per month (as reported)',`${legend([['Souleh Iran','--actual','sq'],['Sekaf & Farjoud','--plan','sq'],['Ehdas','--third','sq'],['EXIR (inactive)','--ink-3','sq']])}<div id="cmp"></div><div class="flag">Source check: the “Overall” row for Aug 2026 (Contractor!E18:G18) is typed as 23,948; the four contractors add to 26,534. This chart uses the contractor rows (grand total ${num(grand)} = Overall Contractor!A2).</div>`,'Stacked column · X: <code>DimDate[YearMonth]</code> · Values: <code>[Contractor Manpower]</code> · Legend: <code>DimContractor[ContractorName]</code> (categories Direct / Indirect / Rest in tooltip)')}
+   </div>`;
+   const drawOd = () => { const od = D.odcc.filter(r=>r[5]===phase);
+     columns($('#odh',pg),{cats:od.map(r=>mon(r[0])),series:[{name:'Actual',color:'--actual',values:od.map(r=>r[2])},{name:'Plan',color:'--plan',values:od.map(r=>r[1])}],h:250,labelEvery:6});
+     $('#ph',pg).querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===phase)); };
+   D.phases.forEach(k=>{ const b=document.createElement('button'); b.type='button'; b.dataset.k=k; b.textContent=k.replace('Monthly','-month plan'); b.onclick=()=>{phase=k;drawOd();}; $('#ph',pg).appendChild(b); });
+   drawOd();
+   columns($('#cmp',pg),{cats:months.map(mon),stacked:true,series:[{name:'Souleh Iran',color:'--actual',values:byC('SOL')},{name:'Sekaf & Farjoud',color:'--plan',values:byC('FRJ')},{name:'Ehdas',color:'--third',values:byC('EHD')},{name:'EXIR',color:'--ink-3',values:byC('EXR')}],h:250});
+ }],
+];
+
+const tabs = $('#tabs'), pages = $('#pages'); const built = {};
+function show(id){ PAGES.forEach(([k])=>{ const b = tabs.querySelector(`[data-k="${k}"]`); b.setAttribute('aria-selected', k===id); });
+  pages.innerHTML=''; const pg = document.createElement('div'); pg.setAttribute('role','tabpanel'); pages.appendChild(pg);
+  PAGES.find(p=>p[0]===id)[2](pg); }
+PAGES.forEach(([k,n],i)=>{ const b=document.createElement('button'); b.type='button'; b.role='tab'; b.dataset.k=k; b.textContent=`${i+1} · ${n}`;
+  b.onclick=()=>{ history.replaceState(null,'','#'+k); show(k); }; tabs.appendChild(b); });
+const start = (location.hash||'').slice(1); show(PAGES.some(p=>p[0]===start)?start:'overview');
+let rz; addEventListener('resize',()=>{clearTimeout(rz); rz=setTimeout(()=>show(tabs.querySelector('[aria-selected="true"]').dataset.k),200);});
+addEventListener('hashchange',()=>{ const h=location.hash.slice(1); if(PAGES.some(p=>p[0]===h)) show(h); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>show(tabs.querySelector('[aria-selected="true"]').dataset.k));
+</script>
