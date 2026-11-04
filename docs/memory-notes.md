@@ -44,5 +44,5 @@ Claude Code حافظه claude.ai را نمی‌بیند؛ این فایل جای
 - هر پوشه روز: `CSM-DR-P2-YYYY-Mmm-DD.xlsm`، `CSM-DR-P2-YYYY-Mmm-DD.pdf`، پوشه `CONTRACTORS`.
 - فایل‌های پیمانکارها داخل `CONTRACTORS` (نمونه: `SEKAF&FARJOUD-DR-2026.10.27.xlsb`، `EHS-DR-CIV-0270.xlsx`، `Daily Report(1405.08.05)-27-10-2026).xlsb`).
 - پیمانکاران در یک محل شبکه (مسیر هنوز گفته نشده) PDF و اکسل روزانه می‌گذارند؛ کاربر آن‌ها را به CONTRACTORS کپی می‌کند.
-- ماکروها: `macros/pile-compile-package/` (نسخه فعلی و تأییدشده)؛ `macros/Zero_maker_10deab.bas` نسخه قدیمی است (FRJP AS3).
+- (2026-11-04) ماکروها: **نسخه در حال استفاده = `macros/in-use-2026-11-04/`** (کاربر: «به‌روز شده و استفاده شده»؛ Clear_All_Filters, Daily_Data_Entry_EHD/FRJ/SOI, Final_Touch). `macros/pile-compile-package/` نسخه قبلی است (همراه Zero maker که در بسته جدید نیامده)؛ `macros/Zero_maker_10deab.bas` نسخه قدیمی است (FRJP AS3).
 - اسکیل‌های P6 از مخزن p6-mcp-shop؛ power-bi-dax و oil-gas-project-controls را کاربر اضافه کرد.
