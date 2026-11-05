@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- square enemy (top-left) -->
+    <path android:fillColor="#FF3D6E" android:pathData="M27,30 L37,22 L45,32 L35,40 Z" />
+    <!-- triangle enemy (top-right) -->
+    <path android:fillColor="#FFB300" android:pathData="M74,22 L84,40 L64,40 Z" />
+    <!-- pentagon enemy (bottom) -->
+    <path android:fillColor="#9D6BFF" android:pathData="M54,72 L63,78.5 L59.5,89 L48.5,89 L45,78.5 Z" />
+    <!-- player glow + body + core -->
+    <path android:fillColor="#3340C4FF" android:pathData="M54,54 m-17,0 a17,17 0 1,1 34,0 a17,17 0 1,1 -34,0" />
+    <path android:fillColor="#40C4FF" android:pathData="M54,54 m-12,0 a12,12 0 1,1 24,0 a12,12 0 1,1 -24,0" />
+    <path android:fillColor="#FFFFFF" android:pathData="M54,54 m-7,0 a7,7 0 1,1 14,0 a7,7 0 1,1 -14,0" />
+    <!-- projectiles -->
+    <path android:strokeColor="#80D8FF" android:strokeWidth="3" android:strokeLineCap="round" android:pathData="M60,47 L67,39" />
+    <path android:strokeColor="#80D8FF" android:strokeWidth="3" android:strokeLineCap="round" android:pathData="M47,47 L41,40" />
+</vector>

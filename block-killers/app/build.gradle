@@ -1,0 +1,58 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.blockkillers'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.blockkillers'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        release {
+            storeFile rootProject.file('signing/block-killers.jks')
+            storePassword 'blockkillers'
+            keyAlias 'blockkillers'
+            keyPassword 'blockkillers'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+            all {
+                maxHeapSize = '2g'
+                // Optional: point Robolectric at a pre-downloaded android-all jar (offline / rate-limited networks)
+                def depDir = project.findProperty('robolectricDepsDir')
+                if (depDir) {
+                    systemProperty 'robolectric.offline', 'true'
+                    systemProperty 'robolectric.dependency.dir', depDir
+                }
+                testLogging { events 'passed', 'failed'; exceptionFormat 'full'; showStandardStreams true }
+            }
+        }
+    }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+}
