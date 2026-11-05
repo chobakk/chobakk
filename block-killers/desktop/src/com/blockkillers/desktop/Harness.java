@@ -73,6 +73,30 @@ public final class Harness {
             float dx = p.x - b.x, dy = p.y - b.y, d2 = dx * dx + dy * dy;
             if (d2 < 160 * 160 && d2 > 1) { float d = (float) Math.sqrt(d2); fx += dx / d * 1.5f; fy += dy / d * 1.5f; }
         }
+        // avoid pillars
+        WorldMap mp = g.map;
+        for (int i = 0; i < mp.count; i++) {
+            float dx = p.x - mp.ox[i], dy = p.y - mp.oy[i];
+            float rr = mp.or[i] + p.radius + 70;
+            float d2 = dx * dx + dy * dy;
+            if (d2 < rr * rr && d2 > 1) { float d = (float) Math.sqrt(d2); fx += dx / d * 0.8f * (rr - d) / rr; fy += dy / d * 0.8f * (rr - d) / rr; }
+        }
+        // go for nearby loot when it is calm
+        GroundItem best = null; float bd = 500 * 500;
+        for (int i = 0; i < g.loot.items.size; i++) {
+            GroundItem it = g.loot.items.get(i);
+            float d = MathUtil.dist2(it.x, it.y, p.x, p.y);
+            if (d < bd) { bd = d; best = it; }
+        }
+        if (best != null) { float dx = best.x - p.x, dy = best.y - p.y, d = MathUtil.len(dx, dy) + 1; fx += dx / d * 0.7f; fy += dy / d * 0.7f; }
+        if (g.loot.nearby != null) equipIfBetter(g);
+        // hold the strongest gun
+        int bestSlot = g.weapons.active; float bestDps = -1;
+        for (int i = 0; i < g.weapons.slots.length; i++) {
+            Weapon w = g.weapons.slots[i];
+            if (w != null && w.dps(p) > bestDps) { bestDps = w.dps(p); bestSlot = i; }
+        }
+        if (bestSlot != g.weapons.active) g.weapons.select(bestSlot);
         // engage the boss: keep ~300 units away instead of running off
         Enemy boss = g.bosses.current;
         if (boss != null && boss.alive) {
@@ -92,6 +116,23 @@ public final class Harness {
         int close = 0;
         for (int i = 0; i < list.size; i++) { Enemy e = list.get(i); if (MathUtil.dist2(e.x, e.y, p.x, p.y) < 150 * 150) close++; }
         if (close >= 6 && g.playerCtl.abilityReady()) g.playerCtl.useAbility();
+    }
+
+    /** Bot loot logic: take the drop if it beats the weakest gun (or a slot is free), otherwise scrap it. */
+    private void equipIfBetter(Game g) {
+        Weapon w = g.loot.nearby.weapon;
+        int slot = g.weapons.firstFree();
+        float worst = Float.MAX_VALUE;
+        if (slot < 0) {
+            for (int i = 0; i < g.weapons.slots.length; i++) {
+                float d = g.weapons.slots[i].dps(g.player);
+                if (d < worst) { worst = d; slot = i; }
+            }
+            if (w.dps(g.player) <= worst) { g.openLoot(); g.loot.scrap(); g.closeLoot(); return; }
+        }
+        g.openLoot();
+        g.loot.equipInto(slot);
+        g.closeLoot();
     }
 
     public UIManager.Button cardButton(int i) {

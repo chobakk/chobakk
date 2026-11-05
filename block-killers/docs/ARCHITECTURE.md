@@ -41,6 +41,17 @@ Why:
 | 13 | Achievement Manager | `AchievementManager` | 12 achievements, toast queue, permanent bonuses |
 | 14 | Settings Manager | `SettingsManager` | all settings, persisted |
 
+Version 2 systems:
+
+- `LootManager`, `Loot`, `GroundItem`: rarity tiers, makers, parts, elements and traits; drops, chests, pick-up.
+- `WorldMap`: Open World, Arena and Corridor modes; regions, obstacle grid, steering, chests, fog of war.
+- `PetManager`: companions.
+- `ShopManager`: coins and permanent upgrades.
+- `MemeSounds`: comedic sound layer.
+- `DevOptions`: developer menu.
+- `WeaponManager`: now a 5-slot hotbar.
+- `CombatManager`: adds element matchups, shields and armor, and enemy-bullet interception.
+
 Supporting classes: `Config` (all balance numbers in one place), `Strings` (EN/FA localisation), `WorldRenderer`, `ParticleSystem`, `Camera`, `SpatialGrid`, `EntityList` (object pool), `Shapes`, `MathUtil`.
 
 ## Performance techniques

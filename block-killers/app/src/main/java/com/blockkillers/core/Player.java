@@ -11,6 +11,10 @@ public final class Player {
     public int level, xp;
     public float invuln, hurtFlash, facing;
     public boolean alive;
+    /** Visible body features gained from upgrades (index = UpgradeManager stat id). */
+    public final int[] features = new int[UpgradeManager.STAT_COUNT];
+    public int upgradesTaken;
+    public float baseRadius = Config.PLAYER_RADIUS, morph;
 
     public void reset(PermanentBonus pb) {
         x = 0; y = 0; vx = 0; vy = 0;
@@ -26,6 +30,8 @@ public final class Player {
         armor = pb.armor; regen = 0f; extraProjectiles = 0;
         level = 1; xp = 0; invuln = 0; hurtFlash = 0; facing = 0;
         alive = true;
+        for (int i = 0; i < features.length; i++) features[i] = 0;
+        upgradesTaken = 0; morph = 0; radius = baseRadius;
     }
     public float speed() { return Config.PLAYER_SPEED * speedMult; }
 

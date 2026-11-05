@@ -3,7 +3,10 @@ package com.blockkillers.core;
 /** Persistent progression: records, lifetime statistics and achievement flags. */
 public final class SaveManager {
     private final Storage st;
-    public int bestScore, gamesPlayed, highestLevel, bossesDefeated, achievementMask;
+    public int bestScore, gamesPlayed, highestLevel, bossesDefeated, achievementMask, legendariesFound, chestsOpened, coins;
+    public long coinsEarned;
+    public int selectedMap;
+    public final int[] bestByMap = new int[WorldMap.MODES];
     public long totalKills;
     public float totalTime, bestTime;
 
@@ -18,6 +21,12 @@ public final class SaveManager {
         totalKills = st.getLong("total_kills", 0);
         totalTime = st.getFloat("total_time", 0);
         bestTime = st.getFloat("best_time", 0);
+        legendariesFound = st.getInt("legendaries", 0);
+        chestsOpened = st.getInt("chests", 0);
+        coins = st.getInt("coins", 0);
+        coinsEarned = st.getLong("coins_earned", 0);
+        selectedMap = MathUtil.clamp(st.getInt("map_mode", 0), 0, WorldMap.MODES - 1);
+        for (int i = 0; i < bestByMap.length; i++) bestByMap[i] = st.getInt("best_map_" + i, 0);
     }
 
     public void save() {
@@ -29,7 +38,35 @@ public final class SaveManager {
         st.putLong("total_kills", totalKills);
         st.putFloat("total_time", totalTime);
         st.putFloat("best_time", bestTime);
+        st.putInt("legendaries", legendariesFound);
+        st.putInt("chests", chestsOpened);
+        st.putInt("coins", coins);
+        st.putLong("coins_earned", coinsEarned);
+        st.putInt("map_mode", selectedMap);
+        for (int i = 0; i < bestByMap.length; i++) st.putInt("best_map_" + i, bestByMap[i]);
         st.flush();
+    }
+
+    public boolean recordMapBest(int map, int score) {
+        if (score <= bestByMap[map]) return false;
+        bestByMap[map] = score; save();
+        return true;
+    }
+
+    /** Wipes all progress (developer menu). */
+    public void resetAll() {
+        bestScore = gamesPlayed = highestLevel = bossesDefeated = achievementMask = legendariesFound = chestsOpened = coins = 0;
+        totalKills = coinsEarned = 0; totalTime = bestTime = 0;
+        for (int i = 0; i < bestByMap.length; i++) bestByMap[i] = 0;
+        save();
+    }
+
+    public void addCoins(int c) { coins += c; coinsEarned += c; save(); }
+
+    public void recordLoot(int legendaries, int chests) {
+        legendariesFound += legendaries;
+        chestsOpened += chests;
+        save();
     }
 
     /** Commit a finished run. Returns true if it set a new best score. */

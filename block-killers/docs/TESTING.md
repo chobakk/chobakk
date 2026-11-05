@@ -6,11 +6,49 @@ This build environment has **no KVM**, so an Android emulator could not run, and
 
 | Layer | What runs | Result |
 |---|---|---|
-| 1. Headless gameplay suite (`tools/run-tests.sh`) | the real `core` game code, driven through real button positions and a bot player | **99 / 99 passed** |
-| 2. Robolectric (`gradle :app:testDebugUnitTest`) | the real **Android layer**: `MainActivity` lifecycle, `GameView` driven by `Choreographer` vsync, `MotionEvent` touches, `AndroidGfx` on a native Skia `Canvas`, `SharedPreferences`, SoundPool/AudioTrack, back button, relaunch | **3 / 3 passed** |
+| 1. Headless gameplay suite (`tools/run-tests.sh`) | the real `core` game code, driven through real button positions and a bot player | **203 / 203 passed** |
+| 2. Robolectric (`gradle :app:testDebugUnitTest`) | the real **Android layer**: `MainActivity` lifecycle, `GameView` driven by `Choreographer` vsync, `MotionEvent` touches, `AndroidGfx` on a native Skia `Canvas`, `SharedPreferences`, SoundPool/AudioTrack, back button, relaunch, hotbar switching, shop + developer menu persistence, corridor map | **5 / 5 passed** |
 | 3. APK verification | `aapt2 dump badging`, `dexdump`, `apksigner verify` | package `com.blockkillers`, minSdk 24, targetSdk 34, launcher activity present, only `VIBRATE` permission, v2+v3 signatures valid, no desktop classes in the dex |
 
-## Layer 1: gameplay checks (99)
+## Version 2 additions (checks 100–203)
+- **Hotbar:** tapping switches guns, only the held gun fires, and the gun aims at the target.
+- **All 17 guns** deal damage.
+- **Loot:**
+  - rarity distribution
+  - legendaries always roll a trait and an element
+  - maker and parts are always present, with all 6 makers seen
+  - the same gun can roll a 1.6× DPS spread
+  - drop → PICK UP → equip / scrap / leave
+  - bosses drop 3 Epic+ guns, enemies drop guns during play, drops despawn
+- **Map:**
+  - obstacles block the player and enemy bullets
+  - enemies path around pillars
+  - chests open and drop loot
+  - fog of war reveals as you explore
+  - minimap ↔ full map
+  - each of the 3 maps plays with everyone in bounds
+  - corridor: strictly left/right movement for the player and enemies
+- **Elements:** Burn ×1.5 vs unprotected, Shock ×2 vs shields, Acid ×1.75 vs armor, Slag +50%, Frost slows, plus damage over time. Bosses and fused enemies are protected.
+- **Legendary traits:** Vampiric, Volatile, Overcharge and Fractal all work.
+- **Growth:** the player grows, the camera zooms out, every upgrade changes the body shape, and fused and mega-fused enemies spawn late (and never early).
+- **Coins:** earned, banked and kept after a restart.
+- **Shop:** buying, costs, persistence and the bonus applying to the run. Second Wind revives once.
+- **Passive:** the 20th kill restores 2 HP.
+- **Meme sounds:** air horn, oof, on/off toggle, death sting, sad trombone. All 24 sounds synthesize.
+- **Companions:** start with a Drone, shoot, scale with level, upgrade, max 3, Wisp heals, offered on cards.
+- **Developer menu:** every option, including the double-tap confirm on reset-all.
+- **Bullet interception:** by your bullets, explosions, Nova and Pulse.
+- **Screen fit:** every new screen fits on all 6 screen sizes.
+- **Bugs found and fixed in version 2:**
+  - bosses didn't drop their loot
+  - pick-up radius was too small for drops that pop outward
+  - a dead player could get stuck on the level-up screen
+  - long gun names overflowed their cards
+  - achievement pop-ups covered the weapon screen
+  - late game snowballed (rebalanced: item-level, companion and late-HP scaling and the XP curve)
+- **Bot balance (3 runs):** survived 7:45, 10:04 and 4:59, reaching level 21–60 and beating 0–1 bosses.
+
+## Layer 1: gameplay checks (first 99)
 Covered: menu navigation (all buttons), Play; input-vector movement; joystick drag; multi-touch (ability while moving); stopping; world bounds;
 enemy spawning off-screen; approach; contact damage; armor math; kill → score; **XP awarded immediately**; auto-targeting kills;
 level-up pauses the game and shows 3 cards; card tap applies the upgrade and resumes; XP curve; **all 10 enemy types move**; shooter fires; charger dashes;

@@ -13,11 +13,13 @@ public final class UpgradeManager {
     public static final float[] BASE = {0.10f, 0.08f, 0.06f, 15f, 0.25f, 0.04f, 3f, 0.10f, 0.10f, 0.12f, 1f, 0.12f};
     public static final float[] WEIGHT = {10, 10, 7, 8, 6, 7, 6, 6, 5, 5, 2.5f, 6};
 
-    public static final int T_STAT = 0, T_NEW_WEAPON = 1, T_WEAPON_LEVEL = 2;
+    public static final int T_STAT = 0, T_NEW_WEAPON = 1, T_WEAPON_LEVEL = 2, T_PET_NEW = 3, T_PET_LEVEL = 4;
 
     public static final class Card {
+        /** weapon = type id for new-weapon cards, slot index for weapon-level cards. */
         public int type, stat, weapon, rarity, levels;
         public float value;
+        public Weapon rolled;   // new-weapon cards carry a rolled gun (loot rarity)
     }
 
     private final Game g;
@@ -61,17 +63,30 @@ public final class UpgradeManager {
             candidates.add(c); weights.add(WEIGHT[s]);
         }
         WeaponManager wm = g.weapons;
-        for (int i = 0; i < wm.owned.size(); i++) {
-            Weapon w = wm.owned.get(i);
-            if (w.level >= Config.WEAPON_MAX_LEVEL) continue;
-            Card c = new Card(); c.type = T_WEAPON_LEVEL; c.weapon = w.type.id;
-            candidates.add(c); weights.add(9f);
+        for (int i = 0; i < wm.slots.length; i++) {
+            Weapon w = wm.slots[i];
+            if (w == null || w.level >= Config.WEAPON_MAX_LEVEL) continue;
+            Card c = new Card(); c.type = T_WEAPON_LEVEL; c.weapon = i;
+            candidates.add(c); weights.add(i == wm.active ? 7f : 4f);
         }
         if (wm.canAddMore()) {
             for (WeaponType t : Config.WEAPONS) {
                 if (wm.get(t.id) != null) continue;
                 Card c = new Card(); c.type = T_NEW_WEAPON; c.weapon = t.id;
-                candidates.add(c); weights.add(wm.owned.size() < 3 ? 6f : 3.5f);
+                candidates.add(c); weights.add(wm.count() < 3 ? 2.2f : 1.2f);
+            }
+        }
+        PetManager pm = g.pets;
+        for (int i = 0; i < pm.count; i++) {
+            if (pm.pets[i].level >= PetManager.MAX_LEVEL) continue;
+            Card c = new Card(); c.type = T_PET_LEVEL; c.weapon = i;
+            candidates.add(c); weights.add(3.5f);
+        }
+        if (pm.canAdd()) {
+            for (int t = 0; t < PetManager.TYPES; t++) {
+                if (pm.has(t)) continue;
+                Card c = new Card(); c.type = T_PET_NEW; c.weapon = t;
+                candidates.add(c); weights.add(1.6f);
             }
         }
         cardCount = 0;
@@ -83,7 +98,7 @@ public final class UpgradeManager {
             for (int i = 0; i < candidates.size(); i++) { r -= weights.get(i); if (r <= 0) { pick = i; break; } }
             Card src = candidates.remove(pick); weights.remove(pick);
             Card c = cards[cardCount++];
-            c.type = src.type; c.stat = src.stat; c.weapon = src.weapon;
+            c.type = src.type; c.stat = src.stat; c.weapon = src.weapon; c.rolled = null;
             if (c.type == T_STAT) {
                 c.rarity = rollRarity(bossReward, c.stat == EXTRA_PROJ ? 1 : 0);
                 c.value = c.stat == EXTRA_PROJ ? (c.rarity >= 3 ? 2 : 1) : BASE[c.stat] * Config.RARITY_MULT[c.rarity];
@@ -91,8 +106,12 @@ public final class UpgradeManager {
             } else if (c.type == T_WEAPON_LEVEL) {
                 c.rarity = bossReward ? 2 : 1;
                 c.levels = bossReward ? 2 : 1;
+            } else if (c.type == T_PET_NEW || c.type == T_PET_LEVEL) {
+                c.rarity = c.type == T_PET_NEW ? 2 : 1; c.levels = 1;
             } else {
-                c.rarity = 2; c.levels = 1;
+                int lr = g.loot.rollRarity(bossReward ? Loot.EPIC : Loot.COMMON, 1.5f);
+                c.rolled = g.loot.roll(c.weapon, lr, g.loot.itemLevel());
+                c.rarity = lr; c.levels = 1;
             }
         }
     }
@@ -101,10 +120,19 @@ public final class UpgradeManager {
         if (index < 0 || index >= cardCount) return;
         Card c = cards[index];
         Player p = g.player;
+        p.upgradesTaken++;
+        p.morph = 1f;   // body morph animation
         switch (c.type) {
-            case T_NEW_WEAPON: g.weapons.add(c.weapon); break;
+            case T_NEW_WEAPON: {
+                int s = g.weapons.addInstance(c.rolled != null ? c.rolled : g.loot.roll(c.weapon, Loot.COMMON, g.loot.itemLevel()));
+                if (s >= 0) g.weapons.select(s);
+                break;
+            }
             case T_WEAPON_LEVEL: g.weapons.levelUp(c.weapon, c.levels); break;
+            case T_PET_NEW: g.pets.add(c.weapon); break;
+            case T_PET_LEVEL: g.pets.levelUp(c.weapon); break;
             default:
+                p.features[c.stat]++;
                 switch (c.stat) {
                     case DAMAGE: p.damageMult += c.value; break;
                     case ATTACK_SPEED: p.attackSpeedMult += c.value; break;
@@ -126,8 +154,13 @@ public final class UpgradeManager {
     public String describe(Card c) {
         Strings s = g.strings;
         if (c.type == T_NEW_WEAPON) return s.get(Config.WEAPONS[c.weapon].descKey);
+        if (c.type == T_PET_NEW) return s.get(PetManager.DESC_KEYS[c.weapon]);
+        if (c.type == T_PET_LEVEL) {
+            int l = g.pets.pets[c.weapon].level;
+            return s.get("card_pet_level").replace("{a}", Integer.toString(l)).replace("{b}", Integer.toString(l + 1));
+        }
         if (c.type == T_WEAPON_LEVEL) {
-            Weapon w = g.weapons.get(c.weapon);
+            Weapon w = g.weapons.slots[c.weapon];
             int lvl = w == null ? 1 : w.level;
             return s.get("card_weapon_level").replace("{a}", Integer.toString(lvl)).replace("{b}", Integer.toString(Math.min(Config.WEAPON_MAX_LEVEL, lvl + c.levels)));
         }
@@ -142,8 +175,13 @@ public final class UpgradeManager {
 
     public String title(Card c) {
         Strings s = g.strings;
-        if (c.type == T_NEW_WEAPON) return s.get("card_new") + " " + s.get(Config.WEAPONS[c.weapon].nameKey);
-        if (c.type == T_WEAPON_LEVEL) return s.get(Config.WEAPONS[c.weapon].nameKey) + " +" + c.levels;
+        if (c.type == T_PET_NEW) return s.get("card_new") + " " + s.get(PetManager.NAME_KEYS[c.weapon]);
+        if (c.type == T_PET_LEVEL) return s.get(PetManager.NAME_KEYS[g.pets.pets[c.weapon].type]) + " +1";
+        if (c.type == T_NEW_WEAPON) return s.get("card_new") + " " + (c.rolled != null ? c.rolled.name(s) : s.get(Config.WEAPONS[c.weapon].nameKey));
+        if (c.type == T_WEAPON_LEVEL) {
+            Weapon w = g.weapons.slots[c.weapon];
+            return (w == null ? "?" : w.name(s)) + " +" + c.levels;
+        }
         return s.get(STAT_KEYS[c.stat]);
     }
 }

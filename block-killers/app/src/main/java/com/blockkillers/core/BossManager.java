@@ -57,10 +57,11 @@ public final class BossManager {
             far.init(Config.ENEMIES[0], pt[0], pt[1], 1, 1, 1);
             e = far;
         }
-        e.boss = true; e.bossKind = kind;
+        e.boss = true; e.bossKind = kind; e.armored = true;
         e.radius = RADIUS[kind];
         e.maxHp = e.hp = Config.BOSS_BASE_HP * (float) Math.pow(Config.hpMult(g.time), 0.85) * (1f + 0.45f * tier);
         e.damage = Config.BOSS_DAMAGE * Config.dmgMult(g.time);
+        e.maxShield = e.shield = e.maxHp * 0.35f;
         e.speed = kind == HIVE ? 150f : (kind == PRISM ? 125f : 75f);
         e.xp = (int) (Config.BOSS_XP * (1 + tier * 0.5f));
         e.score = Config.BOSS_SCORE * (tier + 1);
@@ -151,8 +152,8 @@ public final class BossManager {
                         if (e.stateTimer <= 0) {
                             e.state = 1; e.stateTimer = 0.8f;
                             float a = MathUtil.rand(0, MathUtil.TAU);
-                            e.dirX = MathUtil.clamp(p.x + MathUtil.cos(a) * 240f, -Config.WORLD_HALF + 100, Config.WORLD_HALF - 100);
-                            e.dirY = MathUtil.clamp(p.y + MathUtil.sin(a) * 240f, -Config.WORLD_HALF + 100, Config.WORLD_HALF - 100);
+                            e.dirX = g.map.clampX(p.x + MathUtil.cos(a) * 240f, 100);
+                            e.dirY = g.map.clampY(p.y + MathUtil.sin(a) * 240f, 100);
                         }
                         break;
                     case 1: // blink telegraph
@@ -200,6 +201,9 @@ public final class BossManager {
         // clear hostile bullets as a reward
         g.combat.bullets.clear();
         g.ui.announce(g.strings.get("boss_defeated"), "+" + e.score);
+        g.loot.onBossKilled(e);
+        g.addCoins(60 * (e.score / Config.BOSS_SCORE));
+        g.meme.onBossKilled();
         g.pendingBossReward = true;
         current = null;
     }

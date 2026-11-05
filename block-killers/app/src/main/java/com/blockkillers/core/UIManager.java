@@ -7,7 +7,9 @@ public final class UIManager {
     // actions
     public static final int A_PLAY = 1, A_SETTINGS = 2, A_STATS = 3, A_EXIT = 4, A_RESUME = 5, A_RESTART = 6, A_MENU = 7,
             A_BACK = 8, A_PAUSE = 9, A_ABILITY = 10, A_CARD0 = 11, A_CARD1 = 12, A_CARD2 = 13, A_VIB = 14, A_SHAKE = 15,
-            A_QUALITY = 16, A_BATTERY = 17, A_LANG = 18, A_MUSIC = 19, A_SFX = 20, A_SENS = 21, A_DMGNUM = 22;
+            A_QUALITY = 16, A_BATTERY = 17, A_LANG = 18, A_MUSIC = 19, A_SFX = 20, A_SENS = 21, A_DMGNUM = 22,
+            A_MAP = 23, A_PICKUP = 24, A_SLOT0 = 25, A_LOOT_SLOT0 = 30, A_LOOT_SCRAP = 35, A_LOOT_LEAVE = 36, A_MAP_BACK = 37,
+            A_SHOP = 40, A_DEV = 41, A_MAPSEL0 = 42, A_MEME = 45, A_SHOP_ROW0 = 50, A_DEV_ROW0 = 70;
 
     static final int B_BUTTON = 0, B_SLIDER = 1, B_TOGGLE = 2, B_CYCLE = 3, B_CARD = 4, B_ICON = 5;
 
@@ -27,7 +29,7 @@ public final class UIManager {
 
     private final Game g;
     private final ArrayList<Button> menuB = new ArrayList<>(), hudB = new ArrayList<>(), pauseB = new ArrayList<>(),
-            levelB = new ArrayList<>(), overB = new ArrayList<>(), setB = new ArrayList<>(), statB = new ArrayList<>();
+            levelB = new ArrayList<>(), lootB = new ArrayList<>(), mapB = new ArrayList<>(), mapSelB = new ArrayList<>(), shopB = new ArrayList<>(), devB = new ArrayList<>(), overB = new ArrayList<>(), setB = new ArrayList<>(), statB = new ArrayList<>();
     private Button pressed;
     private int pressedPointer = -1;
     private Button slider;
@@ -47,8 +49,23 @@ public final class UIManager {
         menuB.add(new Button(A_SETTINGS, B_BUTTON, "settings", 0xFFB388FF));
         menuB.add(new Button(A_STATS, B_BUTTON, "statistics", 0xFFB388FF));
         menuB.add(new Button(A_EXIT, B_BUTTON, "exit", PINK));
+        menuB.add(new Button(A_SHOP, B_BUTTON, "shop", GOLD));
+        menuB.add(new Button(A_DEV, B_BUTTON, "dev_menu", 0xFF69F0AE));
+        for (int i = 0; i < WorldMap.MODES; i++) mapSelB.add(new Button(A_MAPSEL0 + i, B_CARD, "", NEON));
+        mapSelB.add(new Button(A_BACK, B_BUTTON, "back", PINK));
+        for (int i = 0; i < ShopManager.COUNT; i++) shopB.add(new Button(A_SHOP_ROW0 + i, B_CARD, "", GOLD));
+        shopB.add(new Button(A_BACK, B_BUTTON, "back", PINK));
+        for (int i = 0; i < DEV_ROWS; i++) devB.add(new Button(A_DEV_ROW0 + i, i == DEV_ROWS - 1 ? B_BUTTON : B_CYCLE, DEV_KEYS[i], i == DEV_ROWS - 1 ? NEON : 0xFF69F0AE));
+        devB.add(new Button(A_BACK, B_BUTTON, "back", PINK));
         hudB.add(new Button(A_PAUSE, B_ICON, "pause", 0xFFFFFFFF));
         hudB.add(new Button(A_ABILITY, B_ICON, "nova", 0xFF40C4FF));
+        hudB.add(new Button(A_MAP, B_ICON, "map", 0xFFFFFFFF));
+        hudB.add(new Button(A_PICKUP, B_BUTTON, "pick_up", 0xFFFFFFFF));
+        for (int i = 0; i < Config.HOTBAR; i++) hudB.add(new Button(A_SLOT0 + i, B_ICON, "", 0xFFFFFFFF));
+        for (int i = 0; i < Config.HOTBAR; i++) lootB.add(new Button(A_LOOT_SLOT0 + i, B_ICON, "", 0xFFFFFFFF));
+        lootB.add(new Button(A_LOOT_SCRAP, B_BUTTON, "scrap", GOLD));
+        lootB.add(new Button(A_LOOT_LEAVE, B_BUTTON, "leave", PINK));
+        mapB.add(new Button(A_MAP_BACK, B_BUTTON, "back", PINK));
         pauseB.add(new Button(A_RESUME, B_BUTTON, "resume", NEON));
         pauseB.add(new Button(A_RESTART, B_BUTTON, "restart", 0xFFB388FF));
         pauseB.add(new Button(A_SETTINGS, B_BUTTON, "settings", 0xFFB388FF));
@@ -67,6 +84,7 @@ public final class UIManager {
         setB.add(new Button(A_QUALITY, B_CYCLE, "graphics", GOLD));
         setB.add(new Button(A_BATTERY, B_CYCLE, "performance", GOLD));
         setB.add(new Button(A_LANG, B_CYCLE, "language", GOLD));
+        setB.add(new Button(A_MEME, B_TOGGLE, "meme_sounds", 0xFFFF4081));
         setB.add(new Button(A_BACK, B_BUTTON, "back", PINK));
         statB.add(new Button(A_BACK, B_BUTTON, "back", PINK));
         for (float[] s : bg) resetBg(s, true);
@@ -84,15 +102,34 @@ public final class UIManager {
     // ------------------------------------------------------------------ layout
     public void layout() {
         float W = g.viewW, H = g.viewH;
-        float bw = 460, bh = 92, y = Math.max(H * 0.47f, 560);
-        for (int i = 0; i < menuB.size(); i++) {
+        float bw = 460, bh = 76, y = Math.max(H * 0.44f, 520);
+        int[] order = {0, 4, 1, 2, 5, 3};   // PLAY, SHOP, SETTINGS, STATISTICS, DEV, EXIT
+        for (int i : order) {
             Button b = menuB.get(i);
-            float h = i == 0 ? bh + 18 : bh;
+            float h = i == 0 ? bh + 20 : bh;
             b.set(W / 2 - bw / 2, y, W / 2 + bw / 2, y + h);
-            y += h + 22;
+            y += h + 14;
         }
+        float mh = Math.min(230, (H - 330) / 3f - 16);
+        for (int i = 0; i < WorldMap.MODES; i++) mapSelB.get(i).set(40, 160 + i * (mh + 16), W - 40, 160 + i * (mh + 16) + mh);
+        mapSelB.get(WorldMap.MODES).set(W / 2 - 180, H - 120, W / 2 + 180, H - 44);
+        float sh = Math.min(76, (H - 330) / ShopManager.COUNT);
+        for (int i = 0; i < ShopManager.COUNT; i++) shopB.get(i).set(30, 170 + i * sh, W - 30, 170 + i * sh + sh - 6);
+        shopB.get(ShopManager.COUNT).set(W / 2 - 180, H - 120, W / 2 + 180, H - 44);
+        float dh = Math.min(70, (H - 300) / DEV_ROWS);
+        for (int i = 0; i < DEV_ROWS; i++) devB.get(i).set(40, 150 + i * dh, W - 40, 150 + i * dh + dh - 8);
+        devB.get(DEV_ROWS).set(W / 2 - 180, H - 120, W / 2 + 180, H - 44);
         hudB.get(0).set(W - 96, 46, W - 22, 120);
-        hudB.get(1).set(W - 190, H - 210, W - 40, H - 60);
+        hudB.get(1).set(W - 148, H - 300, W - 32, H - 184);
+        hudB.get(2).set(W - 180, 132, W - 20, 292);
+        hudB.get(3).set(W / 2 - 160, H - 255, W / 2 + 160, H - 165);
+        float hs = 100, hg = 10, hx = (W - (hs * Config.HOTBAR + hg * (Config.HOTBAR - 1))) / 2f;
+        for (int i = 0; i < Config.HOTBAR; i++) hudB.get(4 + i).set(hx + i * (hs + hg), H - 140, hx + i * (hs + hg) + hs, H - 40);
+        float lrow = Math.min(80, (H - 170 - 548) / 5f);
+        for (int i = 0; i < Config.HOTBAR; i++) lootB.get(i).set(40, 548 + i * lrow, W - 40, 548 + i * lrow + lrow - 8);
+        lootB.get(5).set(40, H - 140, W / 2 - 10, H - 50);
+        lootB.get(6).set(W / 2 + 10, H - 140, W - 40, H - 50);
+        mapB.get(0).set(W / 2 - 180, H - 120, W / 2 + 180, H - 44);
         y = H * 0.42f;
         for (Button b : pauseB) { b.set(W / 2 - bw / 2, y, W / 2 + bw / 2, y + bh); y += bh + 20; }
         float ch = Math.min(200, (H * 0.62f) / 3f - 20);
@@ -100,7 +137,7 @@ public final class UIManager {
         for (Button b : levelB) { b.set(40, y, W - 40, y + ch); y += ch + 22; }
         y = H * 0.70f;
         for (Button b : overB) { b.set(W / 2 - bw / 2, y, W / 2 + bw / 2, y + bh); y += bh + 20; }
-        float row = Math.min(92, (H - 330) / 10f);
+        float row = Math.min(88, (H - 360) / 11f);
         y = 150;
         for (int i = 0; i < setB.size() - 1; i++) { setB.get(i).set(40, y, W - 40, y + row - 12); y += row; }
         setB.get(setB.size() - 1).set(W / 2 - 180, H - 130, W / 2 + 180, H - 50);
@@ -116,6 +153,11 @@ public final class UIManager {
             case Game.S_GAMEOVER: return overB;
             case Game.S_SETTINGS: return setB;
             case Game.S_STATS: return statB;
+            case Game.S_LOOT: return lootB;
+            case Game.S_MAP: return mapB;
+            case Game.S_MAPSELECT: return mapSelB;
+            case Game.S_SHOP: return shopB;
+            case Game.S_DEV: return devB;
             default: return null;
         }
     }
@@ -128,6 +170,11 @@ public final class UIManager {
     public Button overButton(int i) { return overB.get(i); }
     public Button settingsButton(int i) { return setB.get(i); }
     public Button statsButton(int i) { return statB.get(i); }
+    public Button lootButton(int i) { return lootB.get(i); }
+    public Button mapButton(int i) { return mapB.get(i); }
+    public Button mapSelectButton(int i) { return mapSelB.get(i); }
+    public Button shopButton(int i) { return shopB.get(i); }
+    public Button devButton(int i) { return devB.get(i); }
 
     public void openLevelUp() {
         levelOpenTime = g.realTime;
@@ -142,12 +189,14 @@ public final class UIManager {
         ArrayList<Button> bs = buttons();
         if (bs == null) return false;
         menuB.get(3).enabled = g.platform.canExit();
+        hudB.get(3).enabled = g.loot.nearby != null;
         if (g.state == Game.S_LEVELUP && g.realTime - levelOpenTime < 0.45f) return true;
         if (g.state == Game.S_GAMEOVER && g.gameOverTimer < 0.8f) return true;
         for (Button b : bs) {
             if (!b.hit(x, y)) continue;
             if (b.kind == B_SLIDER) { slider = b; sliderPointer = id; setSlider(b, x); return true; }
             if (b.action == A_ABILITY) { g.playerCtl.useAbility(); return true; }
+            if (b.action >= A_SLOT0 && b.action < A_SLOT0 + Config.HOTBAR) { g.weapons.select(b.action - A_SLOT0); return true; }
             pressed = b; pressedPointer = id;
             return true;
         }
@@ -201,7 +250,10 @@ public final class UIManager {
         if (a != A_PAUSE) g.audio.play(Sfx.CLICK);
         SettingsManager s = g.settings;
         switch (a) {
-            case A_PLAY: g.startRun(); break;
+            case A_PLAY: g.state = Game.S_MAPSELECT; break;
+            case A_SHOP: g.state = Game.S_SHOP; break;
+            case A_DEV: g.state = Game.S_DEV; break;
+            case A_MEME: s.memeSounds = !s.memeSounds; s.save(); if (s.memeSounds) g.audio.play(Sfx.AIRHORN); break;
             case A_SETTINGS: g.openSettings(); break;
             case A_STATS: g.state = Game.S_STATS; break;
             case A_EXIT: g.platform.exitApp(); break;
@@ -209,6 +261,7 @@ public final class UIManager {
             case A_RESTART: g.restart(); break;
             case A_MENU: g.toMenu(); break;
             case A_BACK: if (g.state == Game.S_SETTINGS) g.closeSettings(); else g.state = Game.S_MENU; break;
+            case A_MAPSEL0: case A_MAPSEL0 + 1: case A_MAPSEL0 + 2: g.startRun(a - A_MAPSEL0); break;
             case A_PAUSE: g.pause(); break;
             case A_CARD0: g.chooseUpgrade(0); break;
             case A_CARD1: g.chooseUpgrade(1); break;
@@ -219,11 +272,23 @@ public final class UIManager {
             case A_QUALITY: s.quality = (s.quality + 1) % 3; g.fx.adaptive = 1f; s.save(); break;
             case A_BATTERY: s.batterySaver = !s.batterySaver; s.save(); break;
             case A_LANG: s.language = (s.language + 1) % 2; s.save(); break;
+            case A_MAP: g.openMap(); break;
+            case A_MAP_BACK: g.closeMap(); break;
+            case A_PICKUP: g.openLoot(); break;
+            case A_LOOT_SCRAP: g.loot.scrap(); g.closeLoot(); break;
+            case A_LOOT_LEAVE: g.closeLoot(); break;
+            default:
+                if (a >= A_LOOT_SLOT0 && a < A_LOOT_SLOT0 + Config.HOTBAR) { g.loot.equipInto(a - A_LOOT_SLOT0); g.closeLoot(); }
+                else if (a >= A_SHOP_ROW0 && a < A_SHOP_ROW0 + ShopManager.COUNT) {
+                    int i = a - A_SHOP_ROW0;
+                    if (g.shop.buy(i)) { g.audio.play(Sfx.SELECT); shopFlash = i; shopFlashT = 0.4f; }
+                    else { g.audio.play(Sfx.HURT); shopFlash = -1 - i; shopFlashT = 0.4f; }
+                } else if (a >= A_DEV_ROW0 && a < A_DEV_ROW0 + DEV_ROWS) devAction(a - A_DEV_ROW0);
         }
     }
 
     // ------------------------------------------------------------------ update
-    public void update(float dt) { if (annTimer > 0) annTimer -= dt; }
+    public void update(float dt) { if (annTimer > 0) annTimer -= dt; if (shopFlashT > 0) shopFlashT -= dt; }
 
     public void updateMenuBackground(float dt) {
         for (float[] s : bg) {
@@ -255,11 +320,22 @@ public final class UIManager {
             case Game.S_GAMEOVER: renderGameOver(gfx); break;
             case Game.S_SETTINGS: dim(gfx, g.settingsReturn != Game.S_MENU ? 0xEE070B16 : 0xB3070B16); renderSettings(gfx); break;
             case Game.S_STATS: dim(gfx, 0xB3070B16); renderStats(gfx); break;
+            case Game.S_LOOT: renderHud(gfx); renderLoot(gfx); break;
+            case Game.S_MAP: renderMap(gfx); break;
+            case Game.S_MAPSELECT: dim(gfx, 0xB3070B16); renderMapSelect(gfx); break;
+            case Game.S_SHOP: dim(gfx, 0xC0070B16); renderShop(gfx); break;
+            case Game.S_DEV: dim(gfx, 0xD0070B16); renderDev(gfx); break;
         }
         renderToast(gfx);
     }
 
     private String s(String key) { return g.strings.get(key); }
+
+    /** Largest text size (<= size) at which t fits in maxW. */
+    private float fit(Gfx gfx, String t, float maxW, float size, boolean bold) {
+        float w = gfx.textWidth(t, size, bold);
+        return w <= maxW ? size : Math.max(12f, size * maxW / w);
+    }
 
     private void dim(Gfx gfx, int c) { gfx.rect(0, 0, g.viewW, g.viewH, c); }
 
@@ -318,22 +394,28 @@ public final class UIManager {
         gfx.text(MathUtil.time(g.time), W / 2 + 40, 112, 40, 0xFFFFFFFF, Gfx.ALIGN_CENTER, true);
         gfx.text(s("kills") + " " + g.kills, W - 110, 72, 22, 0xFFFF80AB, Gfx.ALIGN_RIGHT, true);
         gfx.text(s("score") + " " + g.score, W - 110, 102, 22, GOLD, Gfx.ALIGN_RIGHT, true);
-        // weapons
-        float wx = 24;
-        for (int i = 0; i < g.weapons.owned.size(); i++) {
-            Weapon w = g.weapons.owned.get(i);
-            gfx.roundRect(wx, 88, wx + 44, 132, 10, 0x99000000);
-            gfx.strokeRoundRect(wx, 88, wx + 44, 132, 10, 2, w.type.color);
-            weaponIcon(gfx, w.type.id, wx + 22, 106, 13, w.type.color);
-            gfx.text(Integer.toString(w.level), wx + 22, 130, 14, 0xFFFFFFFF, Gfx.ALIGN_CENTER, true);
-            wx += 50;
+        coinIcon(gfx, 30, 98, 10);
+        gfx.text(Integer.toString(g.coinsThisRun), 46, 106, 22, 0xFFFFC400, Gfx.ALIGN_LEFT, true);
+        renderHotbar(gfx);
+        renderMinimap(gfx);
+        Button pk = hudB.get(3);
+        pk.enabled = g.state == Game.S_PLAYING && g.loot.nearby != null;
+        if (pk.enabled) {
+            Weapon lw = g.loot.nearby.weapon;
+            int rc = Loot.COLORS[lw.rarity];
+            float pulse = 0.5f + 0.5f * MathUtil.sin(g.realTime * 6);
+            gfx.roundRect(pk.l, pk.t, pk.r, pk.b, 18, pk == pressed ? MathUtil.alpha(rc, 0.45f) : 0xE60E1530);
+            gfx.strokeRoundRect(pk.l, pk.t, pk.r, pk.b, 18, 3 + pulse * 2, rc);
+            gfx.text(s("pick_up"), pk.cx(), pk.t + 36, 26, 0xFFFFFFFF, Gfx.ALIGN_CENTER, true);
+            String ln = lw.name(g.strings);
+            gfx.text(ln, pk.cx(), pk.t + 70, fit(gfx, ln, pk.r - pk.l - 20, 21, true), rc, Gfx.ALIGN_CENTER, true);
         }
         // boss bar
         Enemy boss = g.bosses.current;
         if (boss != null && boss.alive) {
             int c = g.bosses.color(boss);
-            gfx.text(g.bosses.name(boss), W / 2, 168, 26, c, Gfx.ALIGN_CENTER, true);
-            bar(gfx, 60, 178, W - 60, 200, boss.hp / boss.maxHp, c, 0xAA000000);
+            gfx.text(g.bosses.name(boss), (W - 200) / 2 + 20, 168, 26, c, Gfx.ALIGN_CENTER, true);
+            bar(gfx, 30, 178, W - 200, 200, boss.hp / boss.maxHp, c, 0xAA000000);
         } else if (g.bosses.warning > 0) {
             float a = 0.5f + 0.5f * MathUtil.sin(g.realTime * 14);
             gfx.text(s("boss_incoming"), W / 2, 190, 34, MathUtil.alpha(0xFFFF1744, a), Gfx.ALIGN_CENTER, true);
@@ -357,6 +439,7 @@ public final class UIManager {
             gfx.line(ab.cx() + MathUtil.cos(a) * 14, ab.cy() + MathUtil.sin(a) * 14, ab.cx() + MathUtil.cos(a) * 36, ab.cy() + MathUtil.sin(a) * 36, 4, ready ? 0xFFFFFFFF : 0x66FFFFFF);
         }
         gfx.text(ready ? s("nova") : Integer.toString((int) Math.ceil(cd)), ab.cx(), ab.b + 30, 22, ready ? 0xFF40C4FF : 0x99FFFFFF, Gfx.ALIGN_CENTER, true);
+        if (!p.alive && g.state == Game.S_PLAYING) { renderDeath(gfx); return; }
         // joystick
         Joystick j = g.joystick;
         if (j.active) {
@@ -366,7 +449,7 @@ public final class UIManager {
             gfx.circle(kx, ky, 34, 0x9940C4FF);
             gfx.ring(kx, ky, 34, 3, 0xFFFFFFFF);
         } else if (g.state == Game.S_PLAYING && g.time < 8) {
-            float x = 170, y = H - 200;
+            float x = 170, y = H - 340;
             gfx.ring(x, y, 85, 3, 0x33FFFFFF);
             gfx.circle(x, y, 34, 0x2240C4FF);
             gfx.text(s("drag_to_move"), x, y + 130, 22, 0x99FFFFFF, Gfx.ALIGN_CENTER, true);
@@ -376,6 +459,23 @@ public final class UIManager {
             float k = Math.min(1f, Math.min(annTimer, 2.6f - annTimer) * 3f);
             neonText(gfx, annTitle, W / 2, H * 0.36f, 54, MathUtil.alpha(0xFFFFFFFF, k));
             if (annSub != null) gfx.text(annSub, W / 2, H * 0.36f + 50, 28, MathUtil.alpha(GOLD, k), Gfx.ALIGN_CENTER, true);
+        }
+    }
+
+    /** Slow-motion death: desaturating overlay, cinematic bars and a big title. */
+    private void renderDeath(Gfx gfx) {
+        float W = g.viewW, H = g.viewH, t = g.deathSlowmo;
+        float k = MathUtil.clamp(t / 0.8f, 0, 1);
+        gfx.rect(0, 0, W, H, MathUtil.alpha(0xFF2A2A2A, 0.55f * k));
+        gfx.rect(0, 0, W, H, MathUtil.alpha(0xFF400010, 0.25f * k));
+        float bar = H * 0.12f * k;
+        gfx.rect(0, 0, W, bar, 0xFF000000);
+        gfx.rect(0, H - bar, W, H, 0xFF000000);
+        if (t > 0.5f) {
+            float a = MathUtil.clamp((t - 0.5f) * 3f, 0, 1);
+            float sc = 1.6f - 0.6f * a;
+            gfx.text(s("eliminated"), W / 2 + 4, H * 0.48f + 4, 92 * sc, MathUtil.alpha(0xFF000000, a), Gfx.ALIGN_CENTER, true);
+            gfx.text(s("eliminated"), W / 2, H * 0.48f, 92 * sc, MathUtil.alpha(0xFFFF1744, a), Gfx.ALIGN_CENTER, true);
         }
     }
 
@@ -413,22 +513,29 @@ public final class UIManager {
         for (int i = 0; i < um.cardCount; i++) {
             Button b = levelB.get(i);
             UpgradeManager.Card c = um.cards[i];
-            int rc = c.type == UpgradeManager.T_STAT ? Config.RARITY_COLORS[c.rarity] : 0xFF64FFDA;
+            Weapon cw = c.type == UpgradeManager.T_NEW_WEAPON ? c.rolled : (c.type == UpgradeManager.T_WEAPON_LEVEL ? g.weapons.slots[c.weapon] : null);
+            int rc = c.type == UpgradeManager.T_STAT ? Config.RARITY_COLORS[c.rarity] : (cw != null ? Loot.COLORS[cw.rarity] : 0xFF64FFDA);
             float off = (1 - appear) * (300 + i * 120);
             float l = b.l + off, r = b.r + off;
             gfx.roundRect(l, b.t, r, b.b, 20, b == pressed ? MathUtil.alpha(rc, 0.3f) : 0xF0101830);
             gfx.strokeRoundRect(l, b.t, r, b.b, 20, c.rarity >= 2 ? 5 : 3, rc);
-            if (c.rarity == 3) gfx.strokeRoundRect(l - 6, b.t - 6, r + 6, b.b + 6, 24, 2, MathUtil.alpha(rc, 0.4f + 0.3f * MathUtil.sin(g.realTime * 6)));
+            if (c.rarity == 3 || (cw != null && cw.rarity == Loot.LEGENDARY)) gfx.strokeRoundRect(l - 6, b.t - 6, r + 6, b.b + 6, 24, 2, MathUtil.alpha(rc, 0.4f + 0.3f * MathUtil.sin(g.realTime * 6)));
             float h = b.b - b.t;
             float iconX = rtl ? r - 70 : l + 70;
             gfx.circle(iconX, b.t + h / 2, 44, MathUtil.alpha(rc, 0.18f));
-            if (c.type == UpgradeManager.T_STAT) statIcon(gfx, c.stat, iconX, b.t + h / 2, 26, rc);
-            else weaponIcon(gfx, c.weapon, iconX, b.t + h / 2, 26, Config.WEAPONS[c.weapon].color);
+            if (c.type == UpgradeManager.T_PET_NEW || c.type == UpgradeManager.T_PET_LEVEL) {
+                int pt = c.type == UpgradeManager.T_PET_NEW ? c.weapon : g.pets.pets[c.weapon].type;
+                PetManager.draw(gfx, pt, c.type == UpgradeManager.T_PET_NEW ? 1 : g.pets.pets[c.weapon].level, iconX, b.t + h / 2 - 6, 0, g.realTime);
+            } else if (c.type == UpgradeManager.T_STAT) statIcon(gfx, c.stat, iconX, b.t + h / 2, 26, rc);
+            else if (cw != null) { gfx.save(); gfx.translate(iconX - 22, b.t + h / 2); g.world.drawGun(gfx, cw, 1.4f, 0); gfx.restore(); }
             float tx = rtl ? r - 140 : l + 140;
             int al = rtl ? Gfx.ALIGN_RIGHT : Gfx.ALIGN_LEFT;
-            String rarity = c.type == UpgradeManager.T_STAT ? s(Config.RARITY_KEYS[c.rarity]) : s(c.type == UpgradeManager.T_NEW_WEAPON ? "weapon_new" : "weapon_up");
+            if (c.type == UpgradeManager.T_PET_NEW || c.type == UpgradeManager.T_PET_LEVEL) rc = PetManager.COLORS[c.type == UpgradeManager.T_PET_NEW ? c.weapon : g.pets.pets[c.weapon].type];
+            String rarity = c.type == UpgradeManager.T_PET_NEW ? s("pet_new") : c.type == UpgradeManager.T_PET_LEVEL ? s("pet_up") : c.type == UpgradeManager.T_STAT ? s(Config.RARITY_KEYS[c.rarity])
+                    : s(c.type == UpgradeManager.T_NEW_WEAPON ? "weapon_new" : "weapon_up") + (cw != null ? " · " + s(Loot.RARITY_KEYS[cw.rarity]) : "");
             gfx.text(rarity.toUpperCase(), tx, b.t + h * 0.30f, 18, rc, al, true);
-            gfx.text(um.title(c), tx, b.t + h * 0.56f, 32, 0xFFFFFFFF, al, true);
+            String ttl = um.title(c);
+            gfx.text(ttl, tx, b.t + h * 0.56f, fit(gfx, ttl, (r - l) - 170, 32, true), 0xFFFFFFFF, al, true);
             gfx.text(um.describe(c), tx, b.t + h * 0.82f, 22, 0xFFCFD8DC, al, false);
         }
     }
@@ -475,6 +582,8 @@ public final class UIManager {
             gfx.text(vals[i], rtl ? 90 : W - 90, y + 10, i == 0 ? 38 : 29, col, rtl ? Gfx.ALIGN_LEFT : Gfx.ALIGN_RIGHT, true);
             y += rowH;
         }
+        coinIcon(gfx, W / 2 - 90, top - 22, 13);
+        gfx.text("+" + g.coinsThisRun + " " + s("coins"), W / 2 - 70, top - 13, 26, 0xFFFFC400, Gfx.ALIGN_LEFT, true);
         // enemies defeated breakdown (as coloured shapes with counts)
         gfx.text(s("enemies_defeated"), W / 2, bottom - 70, 22, 0xFFB0BEC5, Gfx.ALIGN_CENTER, false);
         int shown = 0;
@@ -493,6 +602,7 @@ public final class UIManager {
     private void renderSettings(Gfx gfx) {
         float W = g.viewW;
         neonText(gfx, s("settings"), W / 2, 100, 64, NEON);
+        gfx.text(s("custom_sounds_hint"), W / 2, g.viewH - 150, 16, 0x99FFFFFF, Gfx.ALIGN_CENTER, false);
         SettingsManager st = g.settings;
         boolean rtl = g.strings.rtl();
         for (Button b : setB) {
@@ -511,7 +621,7 @@ public final class UIManager {
                 String val = b.action == A_SENS ? String.format(java.util.Locale.US, "%.1fx", st.sensitivity) : Math.round(v * 100) + "%";
                 gfx.text(val, sl + (sr - sl) * v, cy - 22, 17, 0xCCFFFFFF, Gfx.ALIGN_CENTER, true);
             } else if (b.kind == B_TOGGLE) {
-                boolean on = b.action == A_VIB ? st.vibration : (b.action == A_SHAKE ? st.screenShake : st.showDamageNumbers);
+                boolean on = b.action == A_VIB ? st.vibration : (b.action == A_SHAKE ? st.screenShake : (b.action == A_MEME ? st.memeSounds : st.showDamageNumbers));
                 float tx = rtl ? cl + 50 : cr - 50;
                 gfx.roundRect(tx - 46, cy - 22, tx + 46, cy + 22, 22, on ? MathUtil.alpha(b.color, 0.7f) : 0x55FFFFFF);
                 gfx.circle(on ? tx + 24 : tx - 24, cy, 18, 0xFFFFFFFF);
@@ -535,11 +645,12 @@ public final class UIManager {
         neonText(gfx, s("statistics"), W / 2, 90, 60, NEON);
         SaveManager sv = g.save;
         boolean rtl = g.strings.rtl();
-        String[] labels = {s("best_score"), s("games_played"), s("total_kills"), s("total_time"), s("best_time"), s("highest_level"), s("bosses_defeated")};
+        String[] labels = {s("best_score"), s("games_played"), s("total_kills"), s("total_time"), s("best_time"), s("highest_level"), s("bosses_defeated"), s("legendaries_found"), s("chests_opened")};
         String[] vals = {Integer.toString(sv.bestScore), Integer.toString(sv.gamesPlayed), Long.toString(sv.totalKills),
-                MathUtil.time(sv.totalTime), MathUtil.time(sv.bestTime), Integer.toString(sv.highestLevel), Integer.toString(sv.bossesDefeated)};
+                MathUtil.time(sv.totalTime), MathUtil.time(sv.bestTime), Integer.toString(sv.highestLevel), Integer.toString(sv.bossesDefeated),
+                Integer.toString(sv.legendariesFound), Integer.toString(sv.chestsOpened)};
         float y = 140;
-        float rowH = Math.min(40, (g.viewH - 760) / 7f);
+        float rowH = Math.min(38, (g.viewH - 800) / 9f);
         for (int i = 0; i < labels.length; i++) {
             gfx.text(labels[i], rtl ? W - 60 : 60, y + 26, 25, 0xFFB0BEC5, rtl ? Gfx.ALIGN_RIGHT : Gfx.ALIGN_LEFT, false);
             gfx.text(vals[i], rtl ? 60 : W - 60, y + 26, 26, 0xFFFFFFFF, rtl ? Gfx.ALIGN_LEFT : Gfx.ALIGN_RIGHT, true);
@@ -561,9 +672,358 @@ public final class UIManager {
         for (Button b : statB) drawButton(gfx, b);
     }
 
+    // ------------------------------------------------------------------ hotbar / minimap / loot / map
+    private void renderHotbar(Gfx gfx) {
+        WeaponManager wm = g.weapons;
+        for (int i = 0; i < Config.HOTBAR; i++) {
+            Button b = hudB.get(4 + i);
+            Weapon w = wm.slots[i];
+            boolean act = i == wm.active;
+            float lift = act ? 10 : 0;
+            int rc = w == null ? 0x55FFFFFF : Loot.COLORS[w.rarity];
+            gfx.roundRect(b.l, b.t - lift, b.r, b.b - lift, 16, act ? 0xEE16213E : 0xAA0B1022);
+            if (act) gfx.roundRect(b.l - 4, b.t - lift - 4, b.r + 4, b.b - lift + 4, 20, MathUtil.alpha(rc, 0.18f));
+            gfx.strokeRoundRect(b.l, b.t - lift, b.r, b.b - lift, 16, act ? 4 : 2, act ? rc : MathUtil.alpha(rc, 0.6f));
+            gfx.text(Integer.toString(i + 1), b.l + 12, b.t - lift + 22, 16, 0x88FFFFFF, Gfx.ALIGN_LEFT, true);
+            if (w == null) { gfx.text("+", b.cx(), b.cy() - lift + 12, 34, 0x33FFFFFF, Gfx.ALIGN_CENTER, true); continue; }
+            gfx.save();
+            gfx.translate(b.cx() - 16, b.cy() - lift - 4);
+            gfx.rotate(-0.25f);
+            g.world.drawGun(gfx, w, 1.25f, 0);
+            gfx.restore();
+            if (w.element != Loot.E_NONE) gfx.circle(b.r - 14, b.t - lift + 15, 7, Loot.ELEMENT_COLORS[w.element]);
+            gfx.text(s("lv") + w.level, b.cx(), b.b - lift - 10, 16, act ? 0xFFFFFFFF : 0xAAFFFFFF, Gfx.ALIGN_CENTER, true);
+            if (act && wm.switchTimer > 0) gfx.rect(b.l + 8, b.b - lift - 6, b.l + 8 + (b.r - b.l - 16) * (1 - wm.switchTimer / Config.SWITCH_DELAY), b.b - lift - 3, rc);
+        }
+    }
+
+    private final float[] rr4 = new float[4];
+
+    private void renderMinimap(Gfx gfx) {
+        Button mb = hudB.get(2);
+        float R = 1800f;                                   // world radius shown
+        float half = (mb.r - mb.l) / 2f, sc = half / R;
+        float cx = mb.cx(), cy = mb.cy();
+        Player p = g.player;
+        WorldMap m = g.map;
+        float W = Config.WORLD_HALF;
+        gfx.roundRect(mb.l - 3, mb.t - 3, mb.r + 3, mb.b + 3, 14, 0xCC000000);
+        // region tint
+        for (int q = 0; q < 4; q++) {
+            m.regionRect(q, rr4);
+            float ql = rr4[0], qr = rr4[2], qt = rr4[1], qb = rr4[3];
+            float il = Math.max(ql, p.x - R), ir = Math.min(qr, p.x + R), it = Math.max(qt, p.y - R), ib = Math.min(qb, p.y + R);
+            if (il >= ir || it >= ib) continue;
+            gfx.rect(cx + (il - p.x) * sc, cy + (it - p.y) * sc, cx + (ir - p.x) * sc, cy + (ib - p.y) * sc, WorldMap.MAP_COLOR[q]);
+        }
+        for (int i = 0; i < m.count; i++) {
+            float dx = m.ox[i] - p.x, dy = m.oy[i] - p.y;
+            if (Math.abs(dx) > R - m.or[i] || Math.abs(dy) > R - m.or[i]) continue;
+            gfx.circle(cx + dx * sc, cy + dy * sc, Math.max(1.5f, m.or[i] * sc), 0xFF607D8B);
+        }
+        for (int i = 0; i < m.chestCount; i++) {
+            if (m.opened[i]) continue;
+            float dx = m.cx[i] - p.x, dy = m.cy[i] - p.y;
+            if (Math.abs(dx) > R || Math.abs(dy) > R) continue;
+            gfx.rect(cx + dx * sc - 3.5f, cy + dy * sc - 3.5f, cx + dx * sc + 3.5f, cy + dy * sc + 3.5f, m.golden[i] ? 0xFFFFC400 : 0xFF26C6DA);
+        }
+        EntityList<GroundItem> items = g.loot.items;
+        for (int i = 0; i < items.size; i++) {
+            GroundItem it = items.get(i);
+            float dx = it.x - p.x, dy = it.y - p.y;
+            if (Math.abs(dx) > R || Math.abs(dy) > R) continue;
+            gfx.circle(cx + dx * sc, cy + dy * sc, 3.5f, Loot.COLORS[it.weapon.rarity]);
+        }
+        EntityList<Enemy> en = g.enemies.list;
+        int shown = 0;
+        for (int i = 0; i < en.size && shown < 160; i++) {
+            Enemy e = en.get(i);
+            float dx = e.x - p.x, dy = e.y - p.y;
+            if (!e.alive || Math.abs(dx) > R || Math.abs(dy) > R) continue;
+            shown++;
+            if (e.boss) gfx.circle(cx + dx * sc, cy + dy * sc, 6, g.bosses.color(e));
+            else gfx.rect(cx + dx * sc - 1.2f, cy + dy * sc - 1.2f, cx + dx * sc + 1.2f, cy + dy * sc + 1.2f, e.tier > 0 ? 0xFFFF9100 : 0xFFFF5252);
+        }
+        float a = p.facing;
+        float[] t = {cx + MathUtil.cos(a) * 8, cy + MathUtil.sin(a) * 8, cx + MathUtil.cos(a + 2.5f) * 6, cy + MathUtil.sin(a + 2.5f) * 6,
+                cx + MathUtil.cos(a - 2.5f) * 6, cy + MathUtil.sin(a - 2.5f) * 6};
+        gfx.poly(t, 3, 0xFFFFFFFF);
+        gfx.strokeRoundRect(mb.l - 3, mb.t - 3, mb.r + 3, mb.b + 3, 14, 2, mb == pressed ? 0xFFFFFFFF : 0x8818FFFF);
+        gfx.text(s(WorldMap.REGION_KEYS[m.regionAt(p.x, p.y)]), cx, mb.b + 22, 16, 0xCCFFFFFF, Gfx.ALIGN_CENTER, true);
+    }
+
+    /** Stat lines describing a gun (used on the loot screen). */
+    private int weaponLines(Weapon w, String[] out) {
+        Player p = g.player;
+        int n = 0;
+        int cnt = w.count(p);
+        out[n++] = s("st_dps") + "  " + Math.round(w.dps(p));
+        out[n++] = s("st_damage") + "  " + Math.round(w.damage(p)) + (cnt > 1 && w.type.usesProjectiles() ? " ×" + cnt : "");
+        if (w.type.kind != WeaponType.K_ORBIT) out[n++] = s("st_rate") + "  " + String.format(java.util.Locale.US, "%.1f/s", 1f / w.cooldown(p));
+        if (w.critBonus() > 0) out[n++] = s("st_crit") + "  +" + Math.round(w.critBonus() * 100) + "%";
+        if (w.pierce() > 0 && w.type.usesProjectiles() && w.pierce() < 50) out[n++] = s("st_pierce") + "  " + w.pierce();
+        if (w.element != Loot.E_NONE) out[n++] = s(Loot.ELEMENT_KEYS[w.element]) + ": " + s("eld" + Loot.ELEMENT_KEYS[w.element].substring(2));
+        if (w.trait != Loot.T_NONE) out[n++] = "★ " + s(Loot.TRAIT_DESC[w.trait]);
+        return n;
+    }
+    private final String[] lines = new String[10];
+
+    public void openLoot() { pressed = null; pressedPointer = -1; levelOpenTime = g.realTime; }
+
+    private void renderLoot(Gfx gfx) {
+        float W = g.viewW, H = g.viewH;
+        dim(gfx, 0xE0070B16);
+        GroundItem it = g.loot.viewing;
+        if (it == null) return;
+        Weapon w = it.weapon;
+        int rc = Loot.COLORS[w.rarity];
+        neonText(gfx, s("weapon_found"), W / 2, 80, 50, rc);
+        gfx.roundRect(40, 105, W - 40, 505, 22, 0xF0101830);
+        gfx.strokeRoundRect(40, 105, W - 40, 505, 22, w.rarity >= Loot.EPIC ? 5 : 3, rc);
+        gfx.circle(140, 210, 70, MathUtil.alpha(rc, 0.15f));
+        gfx.save(); gfx.translate(105, 210); gfx.rotate(-0.3f); g.world.drawGun(gfx, w, 2.4f, 0); gfx.restore();
+        String nm = w.name(g.strings);
+        gfx.text(nm, 240, 165, fit(gfx, nm, W - 300, 32, true), rc, Gfx.ALIGN_LEFT, true);
+        gfx.text(s(Loot.RARITY_KEYS[w.rarity]).toUpperCase() + "  ·  " + s("st_ilvl") + " " + w.itemLevel, 240, 200, 20, MathUtil.alpha(rc, 0.85f), Gfx.ALIGN_LEFT, true);
+        gfx.text(s(w.type.descKey), 240, 232, 19, 0xFFB0BEC5, Gfx.ALIGN_LEFT, false);
+        if (w.maker >= 0) {
+            gfx.text(s(Loot.MAKER_KEYS[w.maker]) + " — " + s(Loot.MAKER_DESC[w.maker]), 240, 260, 18, Loot.MAKER_ACCENT[w.maker], Gfx.ALIGN_LEFT, true);
+            gfx.text(s(Loot.BARREL_KEYS[w.barrel]) + " · " + s(Loot.GRIP_KEYS[w.grip]) + " · " + s(Loot.SIGHT_KEYS[w.sight]) + (w.accessory > 0 ? " · " + s(Loot.ACC_KEYS[w.accessory]) : ""),
+                    70, 292, 17, 0xFFB0BEC5, Gfx.ALIGN_LEFT, false);
+        }
+        int n = weaponLines(w, lines);
+        float y = 330;
+        for (int i = 0; i < n; i++) {
+            gfx.text(lines[i], 70, y, i == 0 ? 26 : 21, i == 0 ? GOLD : (lines[i].startsWith("★") ? Loot.COLORS[Loot.LEGENDARY] : 0xFFFFFFFF), Gfx.ALIGN_LEFT, i == 0);
+            y += i == 0 ? 32 : 27;
+        }
+        gfx.text(s("equip_into"), W / 2, 532, 22, 0xFFB0BEC5, Gfx.ALIGN_CENTER, false);
+        float newDps = w.dps(g.player);
+        for (int i = 0; i < Config.HOTBAR; i++) {
+            Button b = lootB.get(i);
+            Weapon cur = g.weapons.slots[i];
+            int cc = cur == null ? 0x6618FFFF : Loot.COLORS[cur.rarity];
+            gfx.roundRect(b.l, b.t, b.r, b.b, 14, b == pressed ? MathUtil.alpha(cc, 0.35f) : 0xCC0E1530);
+            gfx.strokeRoundRect(b.l, b.t, b.r, b.b, 14, i == g.weapons.active ? 3 : 2, cc);
+            float my = (b.t + b.b) / 2;
+            gfx.text(Integer.toString(i + 1), b.l + 20, my + 8, 22, 0x88FFFFFF, Gfx.ALIGN_LEFT, true);
+            if (cur == null) { gfx.text(s("empty_slot"), b.l + 60, my + 8, 22, 0xFF18FFFF, Gfx.ALIGN_LEFT, true); continue; }
+            gfx.save(); gfx.translate(b.l + 70, my); g.world.drawGun(gfx, cur, 1.0f, 0); gfx.restore();
+            String cn = cur.name(g.strings);
+            gfx.text(cn, b.l + 125, my + 8, fit(gfx, cn, b.r - b.l - 330, 21, true), cc, Gfx.ALIGN_LEFT, true);
+            float d = newDps - cur.dps(g.player);
+            String ds = (d >= 0 ? "▲ +" : "▼ ") + Math.round(d) + " " + s("st_dps");
+            gfx.text(ds, b.r - 20, my + 8, 20, d >= 0 ? 0xFF69F0AE : 0xFFFF5252, Gfx.ALIGN_RIGHT, true);
+        }
+        Button sc = lootB.get(5);
+        sc.key = "scrap";
+        drawButton(gfx, sc);
+        gfx.text("+" + Loot.SCRAP_XP[w.rarity] * (1 + g.loot.itemLevel() / 4) + " XP", sc.cx(), sc.b + 26, 18, GOLD, Gfx.ALIGN_CENTER, false);
+        drawButton(gfx, lootB.get(6));
+    }
+
+    private void renderMap(Gfx gfx) {
+        float W = g.viewW, H = g.viewH;
+        gfx.clear(0xFF05070F);
+        WorldMap m = g.map;
+        neonText(gfx, s("map"), W / 2, 80, 56, NEON);
+        float boxW = W - 40, boxH = H - 330;
+        float sc = Math.min(boxW / (2 * m.hw), boxH / (2 * m.hh));
+        float mw = 2 * m.hw * sc, mhh = 2 * m.hh * sc;
+        float size = mw;
+        float x0 = (W - mw) / 2, y0 = 120 + (boxH - mhh) / 2;
+        float WH = m.hw, HH = m.hh;
+        for (int q = 0; q < 4; q++) {
+            m.regionRect(q, rr4);
+            gfx.rect(x0 + (rr4[0] + WH) * sc, y0 + (rr4[1] + HH) * sc, x0 + (rr4[2] + WH) * sc, y0 + (rr4[3] + HH) * sc, WorldMap.MAP_COLOR[q]);
+        }
+        for (int i = 0; i < m.count; i++) gfx.circle(x0 + (m.ox[i] + WH) * sc, y0 + (m.oy[i] + HH) * sc, Math.max(1.2f, m.or[i] * sc), 0xFF78909C);
+        // fog of war (cells cover the whole 8000-unit square; draw the part inside this map)
+        float fc = WorldMap.FOG_CELL * sc, FH = Config.WORLD_HALF;
+        for (int ry = 0; ry < WorldMap.FOG_COLS; ry++) for (int rx = 0; rx < WorldMap.FOG_COLS; rx++) {
+            if (m.explored[ry * WorldMap.FOG_COLS + rx]) continue;
+            float wx = -FH + rx * WorldMap.FOG_CELL, wy = -FH + ry * WorldMap.FOG_CELL;
+            if (wx + WorldMap.FOG_CELL < -WH || wx > WH || wy + WorldMap.FOG_CELL < -HH || wy > HH) continue;
+            float l = Math.max(x0, x0 + (wx + WH) * sc), t = Math.max(y0, y0 + (wy + HH) * sc);
+            float r = Math.min(x0 + mw, x0 + (wx + WorldMap.FOG_CELL + WH) * sc + 0.5f), bb = Math.min(y0 + mhh, y0 + (wy + WorldMap.FOG_CELL + HH) * sc + 0.5f);
+            gfx.rect(l, t, r, bb, 0xE6070B16);
+        }
+        for (int i = 0; i < m.chestCount; i++) {
+            if (!m.isExplored(m.cx[i], m.cy[i])) continue;
+            float cx = x0 + (m.cx[i] + WH) * sc, cy = y0 + (m.cy[i] + HH) * sc;
+            gfx.rect(cx - 4, cy - 4, cx + 4, cy + 4, m.opened[i] ? 0x55FFFFFF : (m.golden[i] ? 0xFFFFC400 : 0xFF26C6DA));
+        }
+        EntityList<GroundItem> items = g.loot.items;
+        for (int i = 0; i < items.size; i++) {
+            GroundItem it = items.get(i);
+            gfx.circle(x0 + (it.x + WH) * sc, y0 + (it.y + HH) * sc, 4, Loot.COLORS[it.weapon.rarity]);
+        }
+        Enemy boss = g.bosses.current;
+        if (boss != null && boss.alive) gfx.circle(x0 + (boss.x + WH) * sc, y0 + (boss.y + HH) * sc, 8, g.bosses.color(boss));
+        for (int q = 0; q < 4; q++) {
+            m.regionRect(q, rr4);
+            float lx = x0 + ((rr4[0] + rr4[2]) / 2 + WH) * sc, ly2 = y0 + ((rr4[1] + rr4[3]) / 2 + HH) * sc;
+            gfx.text(s(WorldMap.REGION_KEYS[q]), lx, m.corridor() ? y0 - 12 : ly2, m.corridor() ? 15 : 22, 0x99FFFFFF, Gfx.ALIGN_CENTER, true);
+        }
+        Player p = g.player;
+        float px = x0 + (p.x + WH) * sc, py = y0 + (p.y + HH) * sc;
+        float pulse = 6 + 3 * MathUtil.sin(g.realTime * 5);
+        gfx.ring(px, py, pulse + 6, 2, 0xFFFFFFFF);
+        gfx.circle(px, py, 6, 0xFF40C4FF);
+        gfx.strokeRoundRect(x0, y0, x0 + mw, y0 + mhh, 4, 3, 0xFFFF1744);
+        float ly = 120 + boxH + 34;
+        gfx.text(s("explored") + " " + Math.round(m.exploredFraction() * 100) + "%", W / 2, ly, 22, 0xFFFFFFFF, Gfx.ALIGN_CENTER, true);
+        gfx.rect(W / 2 - 230, ly + 16, W / 2 - 220, ly + 26, 0xFFFFC400);
+        gfx.text(s("chest"), W / 2 - 210, ly + 26, 17, 0xCCFFFFFF, Gfx.ALIGN_LEFT, false);
+        gfx.circle(W / 2 - 50, ly + 21, 5, Loot.COLORS[Loot.EPIC]);
+        gfx.text(s("loot"), W / 2 - 40, ly + 26, 17, 0xCCFFFFFF, Gfx.ALIGN_LEFT, false);
+        gfx.circle(W / 2 + 90, ly + 21, 6, 0xFF40C4FF);
+        gfx.text(s("you"), W / 2 + 102, ly + 26, 17, 0xCCFFFFFF, Gfx.ALIGN_LEFT, false);
+        drawButton(gfx, mapB.get(0));
+    }
+
+    // ------------------------------------------------------------------ map select / shop / developer menu
+    private int shopFlash; private float shopFlashT;
+    public static final int DEV_ROWS = 13;
+    public static final String[] DEV_KEYS_PUBLIC = {"dv_coins_add", "dv_coins_big", "dv_coins_zero", "dv_god", "dv_oneshot", "dv_level", "dv_minute", "dv_legendary", "dv_pets", "dv_shop_max", "dv_shop_reset", "dv_reset_all", "dv_start", "dv_confirm", "dev_hint", "choose_map", "shop", "dev_menu", "meme_sounds", "custom_sounds_hint", "eliminated", "second_wind", "multi_kill", "pet_new", "pet_up", "card_pet_level", "maker_fmt", "coins", "max"};
+    static final String[] DEV_KEYS = {"dv_coins_add", "dv_coins_big", "dv_coins_zero", "dv_god", "dv_oneshot", "dv_level", "dv_minute",
+            "dv_legendary", "dv_pets", "dv_shop_max", "dv_shop_reset", "dv_reset_all", "dv_start"};
+    private static final int[] DEV_LEVELS = {1, 5, 10, 20, 30, 50};
+    private static final int[] DEV_MINUTES = {0, 2, 4, 5, 9, 14, 19};
+    private int devConfirmReset;
+
+    private void devAction(int row) {
+        DevOptions d = g.dev;
+        SaveManager sv = g.save;
+        switch (row) {
+            case 0: sv.coins += 1000; sv.save(); break;
+            case 1: sv.coins += 100000; sv.save(); break;
+            case 2: sv.coins = 0; sv.save(); break;
+            case 3: d.godMode = !d.godMode; break;
+            case 4: d.oneShot = !d.oneShot; break;
+            case 5: d.startLevel = next(DEV_LEVELS, d.startLevel); break;
+            case 6: d.startMinute = next(DEV_MINUTES, d.startMinute); break;
+            case 7: d.legendaryLoadout = !d.legendaryLoadout; break;
+            case 8: d.allPets = !d.allPets; break;
+            case 9: for (int i = 0; i < ShopManager.COUNT; i++) { while (!g.shop.maxed(i)) { sv.coins += g.shop.cost(i); g.shop.buy(i); } } break;
+            case 10: for (int i = 0; i < ShopManager.COUNT; i++) { g.shop.levels[i] = 0; g.platform.storage().putInt("shop_" + i, 0); } sv.save(); break;
+            case 11:
+                if (devConfirmReset == 0) { devConfirmReset = 1; return; }
+                sv.resetAll();
+                for (int i = 0; i < ShopManager.COUNT; i++) { g.shop.levels[i] = 0; g.platform.storage().putInt("shop_" + i, 0); }
+                sv.save();
+                break;
+            case 12: g.startRun(sv.selectedMap); break;
+        }
+        devConfirmReset = 0;
+    }
+    private static int next(int[] opts, int cur) { for (int i = 0; i < opts.length; i++) if (opts[i] == cur) return opts[(i + 1) % opts.length]; return opts[0]; }
+
+    private String devValue(int row) {
+        DevOptions d = g.dev;
+        switch (row) {
+            case 0: case 1: case 2: return "● " + g.save.coins;
+            case 3: return s(d.godMode ? "on" : "off");
+            case 4: return s(d.oneShot ? "on" : "off");
+            case 5: return Integer.toString(d.startLevel);
+            case 6: return d.startMinute + ":00";
+            case 7: return s(d.legendaryLoadout ? "on" : "off");
+            case 8: return s(d.allPets ? "on" : "off");
+            case 11: return devConfirmReset == 1 ? s("dv_confirm") : "";
+            case 12: return s(WorldMap.MODE_KEYS[g.save.selectedMap]);
+            default: return "";
+        }
+    }
+
+    private void coinIcon(Gfx gfx, float x, float y, float r) {
+        gfx.circle(x, y, r, 0xFFFFC400);
+        gfx.ring(x, y, r * 0.7f, Math.max(1.5f, r * 0.18f), 0xFFFF8F00);
+        gfx.circle(x - r * 0.3f, y - r * 0.3f, r * 0.2f, 0xCCFFFFFF);
+    }
+
+    private void renderMapSelect(Gfx gfx) {
+        float W = g.viewW;
+        neonText(gfx, s("choose_map"), W / 2, 110, 54, NEON);
+        for (int i = 0; i < WorldMap.MODES; i++) {
+            Button b = mapSelB.get(i);
+            boolean sel = g.save.selectedMap == i;
+            gfx.roundRect(b.l, b.t, b.r, b.b, 22, b == pressed ? 0x6618FFFF : 0xE60E1530);
+            gfx.strokeRoundRect(b.l, b.t, b.r, b.b, 22, sel ? 4 : 2, sel ? NEON : 0x6618FFFF);
+            // preview
+            float pl = b.l + 20, pt = b.t + 20, pr = b.l + 220, pb = b.b - 20;
+            gfx.roundRect(pl, pt, pr, pb, 10, 0xFF05070F);
+            float pcx = (pl + pr) / 2, pcy = (pt + pb) / 2;
+            if (i == WorldMap.OPEN) {
+                gfx.rect(pl + 4, pt + 4, pcx, pcy, WorldMap.MAP_COLOR[WorldMap.TOXIC]); gfx.rect(pcx, pt + 4, pr - 4, pcy, WorldMap.MAP_COLOR[WorldMap.FROST]);
+                gfx.rect(pl + 4, pcy, pcx, pb - 4, WorldMap.MAP_COLOR[WorldMap.NEON]); gfx.rect(pcx, pcy, pr - 4, pb - 4, WorldMap.MAP_COLOR[WorldMap.CRIMSON]);
+                for (int k = 0; k < 14; k++) gfx.circle(pl + 15 + (k * 37 % 170), pt + 12 + (k * 53 % (pb - pt - 24)), 4, 0xFF78909C);
+            } else if (i == WorldMap.ARENA) {
+                gfx.circle(pcx, pcy, (pb - pt) / 2 - 6, WorldMap.MAP_COLOR[WorldMap.CRIMSON]);
+                for (int k = 0; k < 10; k++) { float a = k * MathUtil.TAU / 10; gfx.circle(pcx + MathUtil.cos(a) * (pb - pt) * 0.3f, pcy + MathUtil.sin(a) * (pb - pt) * 0.3f, 5, 0xFF78909C); }
+            } else {
+                gfx.rect(pl + 4, pcy - 9, pr - 4, pcy + 9, WorldMap.MAP_COLOR[WorldMap.NEON]);
+                gfx.line(pl + 4, pcy - 10, pr - 4, pcy - 10, 3, 0xFFFF1744); gfx.line(pl + 4, pcy + 10, pr - 4, pcy + 10, 3, 0xFFFF1744);
+                gfx.text("◀  ▶", pcx, pcy + 40, 22, 0xAAFFFFFF, Gfx.ALIGN_CENTER, true);
+            }
+            gfx.circle(pcx, pcy, 6, 0xFF40C4FF);
+            float tx = b.l + 245;
+            gfx.text(s(WorldMap.MODE_KEYS[i]), tx, b.t + 52, 34, sel ? NEON : 0xFFFFFFFF, Gfx.ALIGN_LEFT, true);
+            gfx.text(s(WorldMap.MODE_DESC[i]), tx, b.t + 88, 19, 0xFFB0BEC5, Gfx.ALIGN_LEFT, false);
+            gfx.text(s("best_score") + ": " + g.save.bestByMap[i], tx, b.b - 28, 22, GOLD, Gfx.ALIGN_LEFT, true);
+        }
+        drawButton(gfx, mapSelB.get(WorldMap.MODES));
+    }
+
+    private void renderShop(Gfx gfx) {
+        float W = g.viewW;
+        neonText(gfx, s("shop"), W / 2, 90, 60, GOLD);
+        coinIcon(gfx, W / 2 - 70, 135, 14);
+        gfx.text(Integer.toString(g.save.coins), W / 2 - 48, 145, 30, GOLD, Gfx.ALIGN_LEFT, true);
+        ShopManager sh = g.shop;
+        for (int i = 0; i < ShopManager.COUNT; i++) {
+            Button b = shopB.get(i);
+            boolean max = sh.maxed(i), can = sh.canBuy(i);
+            int flashCol = shopFlashT > 0 && (shopFlash == i) ? 0x5500E676 : (shopFlashT > 0 && shopFlash == -1 - i ? 0x55FF1744 : 0);
+            gfx.roundRect(b.l, b.t, b.r, b.b, 12, b == pressed ? 0x55FFD740 : 0xCC0E1530);
+            if (flashCol != 0) gfx.roundRect(b.l, b.t, b.r, b.b, 12, flashCol);
+            gfx.strokeRoundRect(b.l, b.t, b.r, b.b, 12, 2, max ? 0xFF00E676 : (can ? GOLD : 0x44FFFFFF));
+            float h = b.b - b.t, my = b.t + h / 2;
+            gfx.text(s(ShopManager.KEYS[i]), b.l + 16, b.t + h * 0.42f, Math.min(24, h * 0.34f), 0xFFFFFFFF, Gfx.ALIGN_LEFT, true);
+            gfx.text(sh.effect(i, g.strings), b.l + 16, b.t + h * 0.82f, Math.min(18, h * 0.26f), 0xFFB0BEC5, Gfx.ALIGN_LEFT, false);
+            for (int k = 0; k < ShopManager.MAX[i]; k++) {
+                float px = b.l + 330 + k * 15;
+                if (ShopManager.MAX[i] > 8) px = b.l + 330 + k * 12;
+                gfx.rect(px, my - 6, px + (ShopManager.MAX[i] > 8 ? 9 : 11), my + 6, k < sh.levels[i] ? GOLD : 0x33FFFFFF);
+            }
+            if (max) gfx.text(s("max"), b.r - 20, my + 8, 22, 0xFF00E676, Gfx.ALIGN_RIGHT, true);
+            else {
+                gfx.text(Integer.toString(sh.cost(i)), b.r - 20, my + 8, 22, can ? GOLD : 0x88FFFFFF, Gfx.ALIGN_RIGHT, true);
+                coinIcon(gfx, b.r - 32 - gfx.textWidth(Integer.toString(sh.cost(i)), 22, true), my, 9);
+            }
+        }
+        drawButton(gfx, shopB.get(ShopManager.COUNT));
+    }
+
+    private void renderDev(Gfx gfx) {
+        float W = g.viewW;
+        neonText(gfx, s("dev_menu"), W / 2, 90, 56, 0xFF69F0AE);
+        gfx.text(s("dev_hint"), W / 2, 128, 19, 0xFFB0BEC5, Gfx.ALIGN_CENTER, false);
+        for (int i = 0; i < DEV_ROWS; i++) {
+            Button b = devB.get(i);
+            if (i == DEV_ROWS - 1) { drawButton(gfx, b); gfx.text(devValue(i), b.r - 18, (b.t + b.b) / 2 + 7, 18, 0xCCFFFFFF, Gfx.ALIGN_RIGHT, false); continue; }
+            gfx.roundRect(b.l, b.t, b.r, b.b, 12, b == pressed ? 0x5569F0AE : 0xCC0E1530);
+            gfx.strokeRoundRect(b.l, b.t, b.r, b.b, 12, 2, i == 11 ? PINK : 0x6669F0AE);
+            float my = (b.t + b.b) / 2;
+            gfx.text(s(DEV_KEYS[i]), b.l + 18, my + 8, 22, 0xFFFFFFFF, Gfx.ALIGN_LEFT, true);
+            gfx.text(devValue(i), b.r - 18, my + 8, 22, i == 11 ? PINK : 0xFF69F0AE, Gfx.ALIGN_RIGHT, true);
+        }
+        drawButton(gfx, devB.get(DEV_ROWS));
+    }
+
     private void renderToast(Gfx gfx) {
         AchievementManager am = g.achievements;
         if (am.toastId < 0) return;
+        if (g.state != Game.S_PLAYING && g.state != Game.S_GAMEOVER && g.state != Game.S_MENU) return;
         float t = am.toastTimer[0];
         float k = Math.min(1f, Math.min(t, 3f - t) * 4f);
         float W = g.viewW;

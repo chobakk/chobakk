@@ -5,7 +5,7 @@ package com.blockkillers.core;
  * Contains no platform code, so the exact same game runs on Android and in the desktop test harness.
  */
 public final class Game {
-    public static final int S_MENU = 0, S_PLAYING = 1, S_PAUSED = 2, S_LEVELUP = 3, S_GAMEOVER = 4, S_SETTINGS = 5, S_STATS = 6;
+    public static final int S_MENU = 0, S_PLAYING = 1, S_PAUSED = 2, S_LEVELUP = 3, S_GAMEOVER = 4, S_SETTINGS = 5, S_STATS = 6, S_LOOT = 7, S_MAP = 8, S_SHOP = 9, S_DEV = 10, S_MAPSELECT = 11;
 
     public final Platform platform;
     public final SettingsManager settings;
@@ -30,6 +30,12 @@ public final class Game {
     public final ParticleSystem fx;
     public final UIManager ui;
     public final WorldRenderer world;
+    public final WorldMap map = new WorldMap();
+    public final LootManager loot;
+    public final ShopManager shop;
+    public final MemeSounds meme;
+    public final PetManager pets;
+    public final DevOptions dev = new DevOptions();
 
     public int state = S_MENU;
     public int settingsReturn = S_MENU;
@@ -40,7 +46,9 @@ public final class Game {
     public float time;
     public int kills, killScore, bossScore, bossesKilled, achievementsThisRun, score;
     public final int[] killsByType = new int[Config.ENEMIES.length];
-    public boolean newBest, pendingBossReward, runActive;
+    public boolean newBest, mapBest, pendingBossReward, runActive, reviveUsed;
+    public float coinsF, deathSlowmo;
+    public int coinsThisRun, bulletsDestroyed;
     public float deathTimer, gameOverTimer;
     /** Testing aid: player cannot take damage. */
     public boolean godMode;
@@ -65,9 +73,14 @@ public final class Game {
         waves = new WaveManager(this);
         bosses = new BossManager(this);
         fx = new ParticleSystem(this);
+        loot = new LootManager(this);
+        shop = new ShopManager(platform.storage(), save);
+        meme = new MemeSounds(this);
+        pets = new PetManager(this);
         ui = new UIManager(this);
         world = new WorldRenderer(this);
         player.reset(bonus);
+        map.generate(1, WorldMap.OPEN);
     }
 
     /** Must be called whenever the surface size changes (pixels). */
@@ -81,9 +94,19 @@ public final class Game {
     public void platformVibrate(int ms) { if (settings.vibration) platform.vibrate(ms); }
 
     // ------------------------------------------------------------------ state changes
+    /** Starts a run on the given map (also remembered as the default). */
+    public void startRun(int mapMode) {
+        save.selectedMap = MathUtil.clamp(mapMode, 0, WorldMap.MODES - 1);
+        save.save();
+        startRun();
+    }
+
     public void startRun() {
         achievements.fillBonus(bonus);
+        shop.apply(bonus);
         player.reset(bonus);
+        map.generate(MathUtil.RNG.nextLong(), save.selectedMap);
+        loot.reset();
         enemies.clear(); combat.clear(); fx.clear();
         weapons.reset(); xp.reset(); waves.reset(); bosses.reset(); playerCtl.reset();
         joystick.reset();
@@ -91,6 +114,11 @@ public final class Game {
         time = 0; kills = killScore = bossScore = bossesKilled = achievementsThisRun = score = 0;
         for (int i = 0; i < killsByType.length; i++) killsByType[i] = 0;
         newBest = false; pendingBossReward = false; deathTimer = 0; gameOverTimer = 0;
+        coinsF = 0; coinsThisRun = 0; bulletsDestroyed = 0; reviveUsed = false; deathSlowmo = 0;
+        meme.reset();
+        pets.reset();
+        for (int i = 0; i < shop.arsenal(); i++) weapons.addInstance(loot.rollRandom(Loot.UNCOMMON, 1f));
+        dev.applyToRun(this);
         camera.snap(0, 0);
         runActive = true;
         state = S_PLAYING;
@@ -118,20 +146,38 @@ public final class Game {
     public void openSettings() { settingsReturn = state; state = S_SETTINGS; }
     public void closeSettings() { settings.save(); audio.refreshVolume(); state = settingsReturn; }
 
+    public void addCoins(float c) {
+        coinsF += c * shop.coinMult();
+        int whole = (int) coinsF;
+        if (whole > 0) { coinsF -= whole; coinsThisRun += whole; }
+    }
+
     public void onPlayerDeath() {
         if (!player.alive) return;
+        if (shop.secondWind() && !reviveUsed) {
+            reviveUsed = true;
+            player.hp = player.maxHp * 0.5f;
+            player.invuln = 2.5f;
+            combat.nova();
+            ui.announce(strings.get("second_wind"), null);
+            return;
+        }
         player.alive = false;
-        deathTimer = 1.2f;
+        deathTimer = 2.8f;
+        deathSlowmo = 0;
+        meme.onDeath();
         fx.burst(player.x, player.y, 0xFF40C4FF, 50, 500, 9);
         fx.ring(player.x, player.y, 260, 0xFFFFFFFF, 0.8f);
         camera.addShake(1f);
         platformVibrate(400);
-        audio.play(Sfx.GAME_OVER);
     }
 
     private void finishRun(boolean died) {
         computeScore();
         newBest = save.recordRun(score, kills, time, player.level, bossesKilled);
+        mapBest = save.recordMapBest(map.mode, score);
+        save.recordLoot(loot.legendariesThisRun, loot.chestsThisRun);
+        save.addCoins(coinsThisRun);
         runActive = false;
     }
 
@@ -147,13 +193,14 @@ public final class Game {
         ui.update(dt);
         achievements.update(dt);
         adapt(dt);
+        if (state == S_LEVELUP && !player.alive) state = S_PLAYING;   // never get stuck on cards after dying
         if (state == S_PLAYING) {
             // sub-step large frames for stable collisions
             int steps = (int) Math.ceil(dt / (1f / 60f));
             steps = Math.max(1, Math.min(steps, 4));
             float h = dt / steps;
             for (int i = 0; i < steps && state == S_PLAYING; i++) step(h);
-        } else if (state == S_MENU) {
+        } else if (state == S_MENU || state == S_SHOP || state == S_DEV || state == S_MAPSELECT) {
             ui.updateMenuBackground(dt);
         } else if (state == S_GAMEOVER) {
             gameOverTimer += dt;
@@ -163,13 +210,19 @@ public final class Game {
 
     private void step(float dt) {
         if (!player.alive) {
+            // dramatic slow-motion death: the world crawls while the camera pushes in
             deathTimer -= dt;
-            fx.update(dt);
-            enemies.update(dt);
-            enemies.cleanup();
+            deathSlowmo += dt;
+            float slow = dt * 0.25f;
+            fx.update(slow);
+            grid.build(enemies.list);
+            enemies.update(slow);
+            camera.targetZoom = Config.zoomFor(player.level, time) * 1.35f;
             camera.update(dt, player.x, player.y, settings.screenShake);
+            enemies.cleanup();
             if (deathTimer <= 0) {
                 finishRun(true);
+                meme.onGameOverScreen();
                 state = S_GAMEOVER;
                 gameOverTimer = 0;
                 joystick.reset();
@@ -182,10 +235,14 @@ public final class Game {
         bosses.update(dt);
         playerCtl.update(dt);
         weapons.update(dt);
+        pets.update(dt);
+        meme.update(dt);
         enemies.update(dt);
         combat.update(dt);
         enemies.cleanup();
         fx.update(dt);
+        loot.update(dt);
+        camera.targetZoom = Config.zoomFor(player.level, time);
         camera.update(dt, player.x, player.y, settings.screenShake);
         computeScore();
         achievements.check();
@@ -212,6 +269,19 @@ public final class Game {
         if (xp.pendingLevelUps > 0 || pendingBossReward) openLevelUp();
     }
 
+    // ------------------------------------------------------------------ loot & map screens
+    public void openLoot() {
+        if (state != S_PLAYING || loot.nearby == null) return;
+        loot.viewing = loot.nearby;
+        state = S_LOOT;
+        joystick.reset();
+        ui.openLoot();
+        audio.play(Sfx.CLICK);
+    }
+    public void closeLoot() { if (state == S_LOOT) { loot.viewing = null; state = S_PLAYING; joystick.reset(); } }
+    public void openMap() { if (state == S_PLAYING) { state = S_MAP; joystick.reset(); audio.play(Sfx.CLICK); } }
+    public void closeMap() { if (state == S_MAP) { state = S_PLAYING; joystick.reset(); } }
+
     /** Lowers particle budgets if frames are consistently slow. */
     private void adapt(float dt) {
         if (state != S_PLAYING) return;
@@ -237,9 +307,11 @@ public final class Game {
             case S_PLAYING: pause(); return true;
             case S_PAUSED: resume(); return true;
             case S_SETTINGS: closeSettings(); return true;
-            case S_STATS: state = S_MENU; return true;
+            case S_STATS: case S_SHOP: case S_DEV: case S_MAPSELECT: state = S_MENU; return true;
             case S_GAMEOVER: toMenu(); return true;
             case S_LEVELUP: return true;
+            case S_LOOT: closeLoot(); return true;
+            case S_MAP: closeMap(); return true;
             default: return false;
         }
     }
@@ -265,7 +337,7 @@ public final class Game {
     public void render(Gfx g) {
         g.save();
         g.scale(scale);
-        if (state == S_MENU || state == S_STATS || (state == S_SETTINGS && settingsReturn == S_MENU)) {
+        if (state == S_MENU || state == S_STATS || state == S_SHOP || state == S_DEV || state == S_MAPSELECT || (state == S_SETTINGS && settingsReturn == S_MENU)) {
             ui.renderMenuBackground(g);
         } else {
             world.render(g);

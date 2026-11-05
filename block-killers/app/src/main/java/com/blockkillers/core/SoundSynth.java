@@ -39,6 +39,20 @@ public final class SoundSynth {
         }
     }
 
+    /** Two-pole band-pass resonator (formant filter). */
+    private static float[] resonate(float[] in, float freq, float q) {
+        float[] out = new float[in.length];
+        double w = 2 * Math.PI * freq / RATE, alpha = Math.sin(w) / (2 * q);
+        double b0 = alpha, a0 = 1 + alpha, a1 = -2 * Math.cos(w), a2 = 1 - alpha;
+        double x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+        for (int i = 0; i < in.length; i++) {
+            double y = (b0 * in[i] - b0 * x2 - a1 * y1 - a2 * y2) / a0;
+            x2 = x1; x1 = in[i]; y2 = y1; y1 = y;
+            out[i] = (float) y;
+        }
+        return out;
+    }
+
     public static short[] generate(int id) {
         float[] b;
         switch (id) {
@@ -83,6 +97,86 @@ public final class SoundSynth {
                 b = buf(1.5f); noiseBurst(b, 0, 1.5f, 1f, 0.06f);
                 float[] notes = {261.63f, 329.63f, 392f, 523.25f, 659.25f};
                 for (int i = 0; i < 5; i++) tone(b, (int) ((0.3f + i * 0.1f) * RATE), 0.5f, notes[i], notes[i], 0.3f, 3, 0.02f);
+                break;
+            }
+            case Sfx.LOOT: {
+                b = buf(0.35f); float[] notes = {1046.5f, 1318.5f, 1568f};
+                for (int i = 0; i < 3; i++) tone(b, (int) (i * 0.05f * RATE), 0.22f, notes[i], notes[i], 0.3f, 3, 0.02f);
+                break;
+            }
+            case Sfx.CHEST: b = buf(0.5f); noiseBurst(b, 0, 0.15f, 0.5f, 0.3f); tone(b, (int) (0.08f * RATE), 0.4f, 440, 880, 0.4f, 1, 0.02f); break;
+            case Sfx.AIRHORN: {
+                b = buf(0.95f);
+                float[] chord = {466.16f, 587.33f, 698.46f};
+                for (int k = 0; k < 3; k++) {
+                    int st = (int) (k * 0.26f * RATE), n = (int) ((k == 2 ? 0.4f : 0.2f) * RATE);
+                    for (float f : chord) {
+                        float ph = 0;
+                        for (int i = 0; i < n && st + i < b.length; i++) {
+                            ph += f * (1f + 0.004f * (float) Math.sin(i * 0.004)) / RATE;
+                            float env = Math.min(1f, i / 300f) * Math.min(1f, (n - i) / 600f);
+                            b[st + i] += saw(ph) * 0.3f * env;
+                        }
+                    }
+                }
+                for (int i = 0; i < b.length; i++) b[i] = (float) Math.tanh(b[i] * 2.5f);   // brassy distortion
+                break;
+            }
+            case Sfx.BOOM: b = buf(1.4f); tone(b, 0, 1.4f, 70, 32, 1f, 0, 0.003f); noiseBurst(b, 0, 0.25f, 0.5f, 0.08f);
+                for (int i = 0; i < b.length; i++) b[i] = (float) Math.tanh(b[i] * 2f); break;
+            case Sfx.OOF: {
+                // glottal pulse train through two vowel formants ("oo")
+                b = buf(0.32f);
+                float[] src = new float[b.length];
+                float ph = 0;
+                for (int i = 0; i < src.length; i++) {
+                    float t = (float) i / src.length;
+                    float f0 = 190f - 80f * t;
+                    ph += f0 / RATE;
+                    src[i] = (ph % 1f) < 0.08f ? 1f : -0.08f;
+                }
+                float[] f1 = resonate(src, 380, 9), f2 = resonate(src, 820, 11);
+                for (int i = 0; i < b.length; i++) {
+                    float t = (float) i / b.length;
+                    float env = Math.min(1f, t * 25f) * (float) Math.pow(1 - t, 1.4);
+                    b[i] = (f1[i] + 0.5f * f2[i]) * env;
+                }
+                break;
+            }
+            case Sfx.BONK: b = buf(0.3f); tone(b, 0, 0.12f, 980, 760, 0.6f, 3, 0.002f); tone(b, 0, 0.25f, 210, 150, 0.7f, 0, 0.002f); noiseBurst(b, 0, 0.02f, 0.6f, 0.9f); break;
+            case Sfx.SAD_TROMBONE: {
+                b = buf(2.0f);
+                float[] notes = {311.13f, 293.66f, 277.18f, 261.63f};
+                float[] lens = {0.35f, 0.35f, 0.35f, 0.9f};
+                float t0 = 0;
+                for (int k = 0; k < 4; k++) {
+                    int st = (int) (t0 * RATE), n = (int) (lens[k] * RATE);
+                    float ph = 0, lp = 0;
+                    for (int i = 0; i < n && st + i < b.length; i++) {
+                        float vib = k == 3 ? 1f + 0.03f * (float) Math.sin(i / (float) RATE * 6 * Math.PI * 2) : 1f;
+                        ph += notes[k] * vib / RATE;
+                        lp += (saw(ph) - lp) * 0.18f;
+                        float env = Math.min(1f, i / 600f) * Math.min(1f, (n - i) / 1500f);
+                        b[st + i] += lp * 0.6f * env;
+                    }
+                    t0 += lens[k];
+                }
+                break;
+            }
+            case Sfx.DEATH_STING: {
+                // swelling low drone, a heavy hit, then a slow descending minor figure with an echo tail
+                b = buf(3.2f);
+                int n = (int) (0.5f * RATE);
+                float ph = 0;
+                for (int i = 0; i < n; i++) { ph += 55f / RATE; b[i] += saw(ph) * 0.25f * (i / (float) n); }
+                int hit = n;
+                tone(b, hit, 1.6f, 90, 30, 1f, 0, 0.002f);
+                noiseBurst(b, hit, 0.6f, 0.7f, 0.06f);
+                float[] notes = {220f, 207.65f, 164.81f};
+                for (int k = 0; k < 3; k++) tone(b, hit + (int) ((0.25f + k * 0.45f) * RATE), 1.2f, notes[k], notes[k] * 0.99f, 0.35f, 3, 0.03f);
+                int d = (int) (0.28f * RATE);
+                for (int i = d; i < b.length; i++) b[i] += b[i - d] * 0.35f;
+                for (int i = 0; i < b.length; i++) b[i] = (float) Math.tanh(b[i] * 1.6f);
                 break;
             }
             default: b = buf(0.01f);

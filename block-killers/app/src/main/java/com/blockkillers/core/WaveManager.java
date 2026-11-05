@@ -27,7 +27,10 @@ public final class WaveManager {
                     if (et.unlockTime > 0) newName = g.strings.get(et.nameKey);
                 }
             }
-            g.ui.announce(g.strings.get("wave") + " " + wave, newName == null ? null : g.strings.get("new_enemy") + ": " + newName);
+            String sub = newName == null ? null : g.strings.get("new_enemy") + ": " + newName;
+            if (sub == null && t >= 100 && t < 160) sub = g.strings.get("fused_appear");
+            if (sub == null && t >= 330 && t < 390) sub = g.strings.get("mega_appear");
+            g.ui.announce(g.strings.get("wave") + " " + wave, sub);
         } else {
             // enemy types unlocked mid-wave
             for (EnemyType et : Config.ENEMIES) {
@@ -51,19 +54,23 @@ public final class WaveManager {
     private void spawnOne(float t) {
         float total = 0;
         for (EnemyType et : Config.ENEMIES) if (et.spawnWeight > 0 && et.unlockTime <= t) total += et.spawnWeight;
-        float r = MathUtil.rand() * total;
+        float rr = MathUtil.rand() * total;
         EnemyType pick = Config.ENEMIES[0];
         for (EnemyType et : Config.ENEMIES) {
             if (et.spawnWeight <= 0 || et.unlockTime > t) continue;
-            r -= et.spawnWeight;
-            if (r <= 0) { pick = et; break; }
+            rr -= et.spawnWeight;
+            if (rr <= 0) { pick = et; break; }
         }
         g.enemies.offscreenPoint(pt);
+        int tier = 0;
+        float r = MathUtil.rand();
+        if (r < Config.megaChance(t)) tier = 2; else if (r < Config.megaChance(t) + Config.fusedChance(t)) tier = 1;
         if (pick.groupSize > 1) {
             int n = pick.groupSize + MathUtil.randInt(3);
             for (int i = 0; i < n; i++) g.enemies.spawn(pick, pt[0] + MathUtil.rand(-50, 50), pt[1] + MathUtil.rand(-50, 50));
         } else {
-            g.enemies.spawn(pick, pt[0], pt[1]);
+            Enemy e = g.enemies.spawn(pick, pt[0], pt[1]);
+            if (e != null && tier > 0) g.enemies.fuse(e, tier);
         }
     }
 

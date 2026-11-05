@@ -105,7 +105,10 @@ public class AndroidSmokeTest {
         snapshot(v, "01-menu");
 
         tapButton(g, v, g.ui.menuButton(0));
-        assertEquals("PLAY via real MotionEvents", Game.S_PLAYING, g.state);
+        assertEquals("PLAY opens map selector", Game.S_MAPSELECT, g.state);
+        snapshot(v, "00-map-select");
+        tapButton(g, v, g.ui.mapSelectButton(0));
+        assertEquals("map card starts a run via real MotionEvents", Game.S_PLAYING, g.state);
 
         // joystick: press + drag with real MotionEvents
         long t = SystemClock.uptimeMillis();
@@ -141,6 +144,10 @@ public class AndroidSmokeTest {
         while (g.state == Game.S_LEVELUP) g.chooseUpgrade(0);
         snapshot(v, "04-boss");
 
+        // switch guns with the hotbar
+        g.weapons.slots[1] = g.loot.roll(com.blockkillers.core.Config.W_RAILGUN, com.blockkillers.core.Loot.LEGENDARY, 3);
+        tapButton(g, v, g.ui.hudButton(5));
+        assertEquals("hotbar tap switches gun", 1, g.weapons.active);
         tapButton(g, v, g.ui.hudButton(0));
         assertEquals("HUD pause", Game.S_PAUSED, g.state);
         snapshot(v, "05-pause");
@@ -150,13 +157,15 @@ public class AndroidSmokeTest {
         g.settings.language = 1;
         snapshot(v, "06-settings-fa");
         g.settings.language = 0;
-        tapButton(g, v, g.ui.settingsButton(9));
+        tapButton(g, v, g.ui.settingsButton(10));
         assertEquals(Game.S_PAUSED, g.state);
         tapButton(g, v, g.ui.pauseButton(0));
 
         g.godMode = false; g.player.invuln = 0;
         g.combat.damagePlayer(1e7f);
-        frames(g, v, 120);
+        frames(g, v, 80);
+        snapshot(v, "08-death");
+        frames(g, v, 140);
         assertEquals(Game.S_GAMEOVER, g.state);
         snapshot(v, "07-game-over");
         int score = g.score;
@@ -187,6 +196,36 @@ public class AndroidSmokeTest {
         g.toMenu();
         a.onBackPressed();
         assertTrue("back on main menu finishes activity", a.isFinishing());
+    }
+
+    @Test public void shopAndDevMenu() {
+        ActivityController<MainActivity> c = launch();
+        Game g = c.get().game();
+        GameView v = c.get().gameView();
+        tapButton(g, v, g.ui.menuButton(5));
+        assertEquals(Game.S_DEV, g.state);
+        tapButton(g, v, g.ui.devButton(0));
+        assertEquals(1000, g.save.coins);
+        tapButton(g, v, g.ui.devButton(UIManager.DEV_ROWS));
+        tapButton(g, v, g.ui.menuButton(4));
+        assertEquals(Game.S_SHOP, g.state);
+        tapButton(g, v, g.ui.shopButton(0));
+        assertEquals(1, g.shop.levels[0]);
+        c.pause().stop().destroy();
+        Game g2 = launch().get().game();
+        assertEquals("shop level persisted", 1, g2.shop.levels[0]);
+        assertTrue("coins persisted", g2.save.coins < 1000 && g2.save.coins > 0);
+    }
+
+    @Test public void corridorMap() {
+        ActivityController<MainActivity> c = launch();
+        Game g = c.get().game();
+        g.startRun(com.blockkillers.core.WorldMap.CORRIDOR);
+        g.godMode = true;
+        g.playerCtl.overrideInput = true; g.playerCtl.inputX = 1; g.playerCtl.inputY = 1;
+        frames(g, c.get().gameView(), 120);
+        assertEquals("corridor: no vertical movement", 0f, g.player.y, 1f);
+        assertTrue(g.player.x > 100);
     }
 
     @Test public void settingsPersistAcrossRelaunch() {
