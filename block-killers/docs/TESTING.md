@@ -6,7 +6,7 @@ This build environment has **no KVM**, so an Android emulator could not run, and
 
 | Layer | What runs | Result |
 |---|---|---|
-| 1. Headless gameplay suite (`tools/run-tests.sh`) | the real `core` game code, driven through real button positions and a bot player | **254 / 254 passed** |
+| 1. Headless gameplay suite (`tools/run-tests.sh`) | the real `core` game code, driven through real button positions and a bot player | **256 / 256 passed** |
 | 2. Robolectric (`gradle :app:testDebugUnitTest`) | the real **Android layer**: `MainActivity` lifecycle, `GameView` driven by `Choreographer` vsync, `MotionEvent` touches, `AndroidGfx` on a native Skia `Canvas`, `SharedPreferences`, SoundPool/AudioTrack, back button, relaunch, hotbar switching, shop + developer menu persistence, corridor map | **5 / 5 passed** |
 | 3. APK verification | `aapt2 dump badging`, `dexdump`, `apksigner verify` | package `com.blockkillers`, minSdk 24, targetSdk 34, launcher activity present, only `VIBRATE` permission, v2+v3 signatures valid, no desktop classes in the dex |
 
@@ -100,3 +100,9 @@ overwhelms eventually, as an endless survival game should.
 ## What still needs a real device
 Feel, audio mix and haptics on physical hardware; frame rate on low-end GPUs; OEM-specific behaviour (notches, gesture navigation).
 Please report anything odd, especially from your own phone.
+
+
+## Version 3.1 additions (checks 255–256)
+- CC0 model sprites load: 11 zombies, 4 survivors, 3 bosses and 16 first-person guns.
+- Every weapon type maps to a gun model with a muzzle point.
+- The 2D and 3D frame-render checks now draw the model sprites (directional billboards, first-person gun).

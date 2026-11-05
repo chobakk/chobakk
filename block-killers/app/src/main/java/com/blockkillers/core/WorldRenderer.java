@@ -211,7 +211,7 @@ public final class WorldRenderer {
                 if (windup) rot = MathUtil.atan2(e.dirY, e.dirX) + MathUtil.PI / 2f;
             }
             if (e.tier > 0 && high) gfx.circle(e.x, e.y, s * 1.7f, MathUtil.alpha(e.tier == 2 ? 0xFFFF1744 : 0xFFFFAB00, 0.12f));
-            Zombies.drawTop(gfx, e, s);
+            if (!zombieSprite2D(gfx, e, s)) Zombies.drawTop(gfx, e, s);
             drawProtection(gfx, e, s);
             if (windup) gfx.line(e.x, e.y, e.x + e.dirX * 120, e.y + e.dirY * 120, 3, 0x88FF6D00);
             if ((e.maxHp >= 80 || e.tier > 0) && e.hp < e.maxHp) {
@@ -264,6 +264,54 @@ public final class WorldRenderer {
         gfx.circle(e.x, e.y, s * 0.16f, e.tier == 2 ? 0xFFFF1744 : 0xFFFFFFFF);
     }
 
+    /** Status colour for model sprites (multiply) and whether the hit-flash is on. */
+    static int statusTint(Enemy e) {
+        int c = 0xFFFFFFFF;
+        if (e.burnT > 0) c = MathUtil.mix(c, 0xFFFF8A50, 0.55f);
+        if (e.slowT > 0) c = MathUtil.mix(c, 0xFFB3E5FC, 0.6f);
+        if (e.poisonT > 0) c = MathUtil.mix(c, 0xFFB2FF59, 0.5f);
+        if (e.slagT > 0) c = MathUtil.mix(c, 0xFFCE93D8, 0.6f);
+        if (e.tier == 2) c = MathUtil.mix(c, 0xFFFF8A80, 0.35f); else if (e.tier == 1) c = MathUtil.mix(c, 0xFFFFE082, 0.3f);
+        return c;
+    }
+
+    /** Pre-rendered 3D zombie model, top-down frame, rotated to its heading. */
+    private boolean zombieSprite2D(Gfx gfx, Enemy e, float s) {
+        Sprites sp = g.sprites;
+        if (sp == null || !sp.ok) return false;
+        Object img = sp.zombies[Math.min(e.type.id, sp.zombies.length - 1)];
+        if (img == null) return false;
+        float dir = MathUtil.atan2(e.vy, e.vx);
+        if (e.type.behavior == EnemyType.B_CHARGE && e.state == 1) dir = MathUtil.atan2(e.dirY, e.dirX);
+        float fps = e.type.id == 1 || e.type.id == 4 || e.type.id == 10 ? 14f : 8f;
+        int frame = ((int) (e.t * fps)) & 7;
+        float size = s * 5.0f;
+        gfx.circle(e.x + 3, e.y + 5, s * 0.95f, 0x40000000);
+        gfx.save();
+        gfx.translate(e.x, e.y);
+        gfx.rotate(dir + MathUtil.PI / 2);
+        int tint = statusTint(e);
+        gfx.image(img, frame * sp.zcw, 8 * sp.zch, sp.zcw, sp.zch, -size / 2, -size / 2, size, size, 1f,
+                e.flash > 0 ? Gfx.TINT_FLASH : (tint != 0xFFFFFFFF ? Gfx.TINT_MULTIPLY : Gfx.TINT_NONE), e.flash > 0 ? 0xCCFFFFFF : tint);
+        gfx.restore();
+        return true;
+    }
+
+    private boolean bossSprite2D(Gfx gfx, Enemy e, float s) {
+        Sprites sp = g.sprites;
+        if (sp == null || !sp.ok || sp.bosses[e.bossKind] == null) return false;
+        float dir = MathUtil.atan2(e.vy, e.vx);
+        int frame = ((int) (e.t * 6f)) & 7;
+        float w = s * 3.4f, h = w * sp.bch / sp.bcw;
+        gfx.save();
+        gfx.translate(e.x, e.y);
+        gfx.rotate(dir + MathUtil.PI / 2);
+        gfx.image(sp.bosses[e.bossKind], frame * sp.bcw, 8 * sp.bch, sp.bcw, sp.bch, -w / 2, -h / 2, w, h, 1f,
+                e.flash > 0 ? Gfx.TINT_FLASH : Gfx.TINT_NONE, 0xCCFFFFFF);
+        gfx.restore();
+        return true;
+    }
+
     private static float easeOutBack(float x) {
         float c1 = 1.70158f, c3 = c1 + 1;
         float v = x - 1;
@@ -285,7 +333,7 @@ public final class WorldRenderer {
             }
         }
         gfx.circle(e.x, e.y, s * 1.7f * pulse, MathUtil.alpha(col, 0.12f));
-        Zombies.drawBossTop(gfx, e, s);
+        if (!bossSprite2D(gfx, e, s)) Zombies.drawBossTop(gfx, e, s);
         drawProtection(gfx, e, s);
     }
 
@@ -478,7 +526,17 @@ public final class WorldRenderer {
             Shapes.stroke(gfx, sides, p.x, p.y, r * 1.28f, -time * 0.4f, 3, 0xFFCFD8DC);
         }
         // body: an armed survivor (suit colour = team / evolution colour)
-        Zombies.drawSurvivorTop(gfx, p.x, p.y, r, p.facing, MathUtil.mix(body, 0xFF263238, 0.35f), 0xFFE0B48C, moving, time);
+        Sprites sp = g.sprites;
+        Object sv = sp != null && sp.ok ? sp.survivors[g.hero.id % sp.survivors.length] : null;
+        if (sv != null) {
+            int frame = moving ? ((int) (time * 10f)) & 7 : 0;
+            float size = r * 5.0f;
+            gfx.circle(p.x + 3, p.y + 5, r * 0.95f, 0x40000000);
+            gfx.save(); gfx.translate(p.x, p.y); gfx.rotate(p.facing + MathUtil.PI / 2);
+            gfx.image(sv, frame * sp.zcw, 8 * sp.zch, sp.zcw, sp.zch, -size / 2, -size / 2, size, size, 1f,
+                    p.hurtFlash > 0 ? Gfx.TINT_FLASH : Gfx.TINT_NONE, 0xAAFF5252);
+            gfx.restore();
+        } else Zombies.drawSurvivorTop(gfx, p.x, p.y, r, p.facing, MathUtil.mix(body, 0xFF263238, 0.35f), 0xFFE0B48C, moving, time);
         // max-HP: extra armor rings on the vest
         int rings = Math.min(4, f[UpgradeManager.MAX_HP]);
         for (int k = 0; k < rings; k++) gfx.ring(p.x, p.y, r * (1.0f + k * 0.1f), 2f, MathUtil.alpha(body, 0.6f));
@@ -537,7 +595,7 @@ public final class WorldRenderer {
             gfx.rotate(p.facing + sw * 1.2f);
             float sc = p.radius / Config.PLAYER_RADIUS;
             gfx.translate(r * 0.7f - w.recoil * 6 * sc, r * 0.35f);
-            drawGun(gfx, w, sc * (1f - 0.4f * sw), w.recoil);
+            if (!gunTopSprite(gfx, w, sc * (1f - 0.4f * sw))) drawGun(gfx, w, sc * (1f - 0.4f * sw), w.recoil);
             if (w.recoil > 0.7f && w.type.kind != WeaponType.K_ORBIT && w.type.kind != WeaponType.K_MINE) {
                 float mx = 44 * sc, fl = 16 * sc * (w.recoil - 0.4f);
                 int fc = w.element != Loot.E_NONE ? Loot.ELEMENT_COLORS[w.element] : 0xFFFFD54F;
@@ -548,8 +606,27 @@ public final class WorldRenderer {
         }
     }
 
-    /** Draws a gun silhouette in local space (x = forward). Trim colour = loot rarity. */
+    /** Real gun model (top view) held in the hands, local space x = forward. */
+    private boolean gunTopSprite(Gfx gfx, Weapon w, float s) {
+        Sprites sp = g.sprites;
+        if (sp == null || !sp.ok) return false;
+        int gi = sp.gunIndex(w.type.id), row = sp.gunRow[gi];
+        float len = 58 * s, h = len / 2;
+        gfx.image(sp.guns, 256, row * 128, 256, 128, -len * 0.25f, -h / 2, len, h, 1f, Gfx.TINT_NONE, 0);
+        return true;
+    }
+
+    /** Draws a gun in local space (x = forward): the real model (side view) with a rarity glow; procedural fallback. */
     public void drawGun(Gfx gfx, Weapon w, float s, float recoil) {
+        Sprites sp = g.sprites;
+        if (sp != null && sp.ok) {
+            int gi = sp.gunIndex(w.type.id), row = sp.gunRow[gi];
+            float len = 64 * s, h = len / 2;
+            if (w.rarity >= Loot.RARE) gfx.circle(len * 0.28f, 0, len * 0.36f, MathUtil.alpha(Loot.COLORS[w.rarity], 0.16f + 0.05f * w.rarity));
+            gfx.image(sp.guns, 0, row * 128, 256, 128, -len * 0.22f, -h / 2, len, h, 1f, Gfx.TINT_NONE, 0);
+            if (w.element != Loot.E_NONE) gfx.circle(len * 0.7f, -h * 0.32f, Math.max(2, 4 * s), Loot.ELEMENT_COLORS[w.element]);
+            return;
+        }
         int trim = Loot.COLORS[w.rarity];
         int body = w.maker >= 0 ? Loot.MAKER_BODY[w.maker] : 0xFF263238, dark = 0xFF101418;
         int accent = w.maker >= 0 ? Loot.MAKER_ACCENT[w.maker] : trim;

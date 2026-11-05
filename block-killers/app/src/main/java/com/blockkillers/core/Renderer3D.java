@@ -84,7 +84,7 @@ public final class Renderer3D {
                     float h = (e.boss ? e.radius * 3.2f : e.radius * 4.4f) * proj / depth;
                     if (e.type.id == 2 || e.type.id == 10) h *= 0.9f;
                     if (zbuf[col] < depth && !visibleEdge(x, h * 0.3f, depth, colW)) continue;
-                    Zombies.drawFront(gfx, e, x, foot, h, e.t * (e.type.id == 1 ? 12f : 6f), fog);
+                    if (!zombieBillboard(gfx, e, x, foot, h, fog, camX, camY)) Zombies.drawFront(gfx, e, x, foot, h, e.t * (e.type.id == 1 ? 12f : 6f), fog);
                     if (e.shield > 0) gfx.ring(x, foot - h * 0.5f, h * 0.45f, Math.max(2, h * 0.02f), MathUtil.alpha(0xFF82B1FF, 0.5f * (1 - fog)));
                     if (e.boss || e.tier > 0 || e.maxHp >= 80) {
                         float bw = h * 0.5f;
@@ -145,7 +145,8 @@ public final class Renderer3D {
                     Hero h = g.heroes[sidx[i]];
                     if (zbuf[col] < depth) continue;
                     float hgt = h.player.radius * 4.2f * proj / depth;
-                    drawOtherPlayer(gfx, h, x, foot, hgt, fog);
+                    if (!survivorBillboard(gfx, h, x, foot, hgt, fog, camX, camY)) drawOtherPlayer(gfx, h, x, foot, hgt, fog);
+                    else gfx.text(h.name, x, foot - hgt * 1.12f, Math.max(12, hgt * 0.12f), h.color, Gfx.ALIGN_CENTER, true);
                 }
             }
         }
@@ -211,6 +212,55 @@ public final class Renderer3D {
             }
     }
 
+    /** Which of the 8 pre-rendered facing rows to use (row 0 = facing the camera, clockwise in 45 deg steps). */
+    private static int facingRow(float dir, float wx, float wy, float camX, float camY) {
+        float rel = dir - MathUtil.atan2(camY - wy, camX - wx);
+        int r = Math.round(rel / (MathUtil.PI / 4f));
+        return ((r % 8) + 8) % 8;
+    }
+
+    private static int fogTint(int tint, float fog) { return MathUtil.mix(tint, 0xFF05070C, fog); }
+
+    /** Pre-rendered CC0 zombie / boss model as a directional billboard. */
+    private boolean zombieBillboard(Gfx gfx, Enemy e, float x, float foot, float h, float fog, float camX, float camY) {
+        Sprites sp = g.sprites;
+        if (sp == null || !sp.ok) return false;
+        Object img; int cw, ch;
+        if (e.boss) { img = sp.bosses[Math.min(e.bossKind, sp.bosses.length - 1)]; cw = sp.bcw; ch = sp.bch; }
+        else { img = sp.zombies[Math.min(e.type.id, sp.zombies.length - 1)]; cw = sp.zcw; ch = sp.zch; }
+        if (img == null) return false;
+        float dir = MathUtil.atan2(e.vy, e.vx);
+        if (e.vx * e.vx + e.vy * e.vy < 1f) dir = MathUtil.atan2(camY - e.y, camX - e.x);
+        if (!e.boss && e.type.behavior == EnemyType.B_CHARGE && e.state == 1) dir = MathUtil.atan2(e.dirY, e.dirX);
+        int row = facingRow(dir, e.x, e.y, camX, camY);
+        float fps = e.boss ? 6f : (e.type.id == 1 || e.type.id == 4 || e.type.id == 10 ? 14f : 8f);
+        int frame = ((int) (e.t * fps)) & 7;
+        float dh = h * 1.12f, dw = dh * cw / ch;
+        float top = foot - dh * 0.965f;
+        int tint = e.boss ? 0xFFFFFFFF : WorldRenderer.statusTint(e);
+        tint = fogTint(tint, fog);
+        if (e.flash > 0) gfx.image(img, frame * cw, row * ch, cw, ch, x - dw / 2, top, dw, dh, 1f, Gfx.TINT_FLASH, 0xCCFFFFFF);
+        else gfx.image(img, frame * cw, row * ch, cw, ch, x - dw / 2, top, dw, dh, 1f, tint != 0xFFFFFFFF ? Gfx.TINT_MULTIPLY : Gfx.TINT_NONE, tint);
+        return true;
+    }
+
+    /** Another player's survivor model as a directional billboard. */
+    private boolean survivorBillboard(Gfx gfx, Hero h, float x, float foot, float hgt, float fog, float camX, float camY) {
+        Sprites sp = g.sprites;
+        if (sp == null || !sp.ok) return false;
+        Object img = sp.survivors[h.id % sp.survivors.length];
+        if (img == null) return false;
+        Player p = h.player;
+        int row = facingRow(p.facing, p.x, p.y, camX, camY);
+        boolean moving = p.vx * p.vx + p.vy * p.vy > 100f;
+        int frame = moving ? ((int) (g.realTime * 10f)) & 7 : 0;
+        float dh = hgt * 1.12f, dw = dh * sp.zcw / sp.zch;
+        int tint = fogTint(0xFFFFFFFF, fog);
+        if (p.hurtFlash > 0) gfx.image(img, frame * sp.zcw, row * sp.zch, sp.zcw, sp.zch, x - dw / 2, foot - dh * 0.965f, dw, dh, 1f, Gfx.TINT_FLASH, 0xAAFF5252);
+        else gfx.image(img, frame * sp.zcw, row * sp.zch, sp.zcw, sp.zch, x - dw / 2, foot - dh * 0.965f, dw, dh, 1f, tint != 0xFFFFFFFF ? Gfx.TINT_MULTIPLY : Gfx.TINT_NONE, tint);
+        return true;
+    }
+
     private void drawOtherPlayer(Gfx gfx, Hero h, float x, float foot, float hgt, float fog) {
         int suit = MathUtil.mix(MathUtil.mix(h.color, 0xFF263238, 0.4f), 0xFF04060C, fog);
         float w = hgt * 0.36f;
@@ -219,6 +269,46 @@ public final class Renderer3D {
         gfx.roundRect(x - w * 0.5f, foot - hgt * 0.8f, x + w * 0.5f, foot - hgt * 0.42f, w * 0.15f, suit);
         gfx.circle(x, foot - hgt * 0.88f, hgt * 0.1f, MathUtil.mix(0xFFE0B48C, 0xFF04060C, fog));
         gfx.text(h.name, x, foot - hgt * 1.05f, Math.max(12, hgt * 0.12f), h.color, Gfx.ALIGN_CENTER, true);
+    }
+
+    /** First-person view-model from the pre-rendered CC0 gun model (Quaternius / Kenney). */
+    private boolean fpSprite(Gfx gfx, Weapon w, float W, float H, float offX, float offY, float sw, float kick, Player p) {
+        Sprites sp = g.sprites;
+        if (sp == null || !sp.ok) return false;
+        int gi = sp.gunIndex(w.type.id);
+        Object img = sp.fp[gi];
+        if (img == null) return false;
+        float S = Math.min(H * 1.15f, W * 0.62f);
+        float k = S / 384f;
+        float[] mz = sp.fpMuzzle[gi];
+        // muzzle lands just below-right of the crosshair; recoil kicks the gun back (down-right) and up
+        float mxs = W * 0.575f + offX + kick * 26f, mys = H * 0.6f + offY + sw * H * 0.8f + kick * 40f;
+        float left = mxs - mz[0] * k, top = mys - mz[1] * k;
+        float grow = 1f + kick * 0.05f;
+        gfx.save();
+        gfx.translate(mxs, mys);
+        gfx.rotate(kick * 0.06f - sw * 0.25f);
+        gfx.scale(grow);
+        gfx.translate(-mxs, -mys);
+        // element glow under the gun
+        if (w.element != Loot.E_NONE) gfx.circle(left + S * 0.72f, top + S * 0.72f, S * 0.3f, MathUtil.alpha(Loot.ELEMENT_COLORS[w.element], 0.12f));
+        gfx.image(img, 0, 0, 384, 384, left, top, S, S, 1f, Gfx.TINT_NONE, 0);
+        gfx.restore();
+        // rarity tag in the corner of the gun
+        gfx.circle(left + S * 0.93f, top + S * 0.9f, Math.max(4, S * 0.012f), Loot.COLORS[w.rarity]);
+        if (kick > 0.65f && w.type.kind != WeaponType.K_ORBIT && w.type.kind != WeaponType.K_MINE) {
+            float fl = (0.7f + MathUtil.rand() * 0.6f) * S * 0.16f * (kick - 0.5f) * 2f;
+            int fc = w.element != Loot.E_NONE ? Loot.ELEMENT_COLORS[w.element] : 0xFFFFD54F;
+            gfx.circle(mxs, mys, fl * 0.9f, MathUtil.alpha(fc, 0.35f));
+            gfx.circle(mxs, mys, fl * 0.45f, MathUtil.alpha(0xFFFFF8E1, 0.9f));
+            for (int q = 0; q < 6; q++) { float a = q * MathUtil.TAU / 6 + g.realTime * 20; gfx.line(mxs, mys, mxs + MathUtil.cos(a) * fl, mys + MathUtil.sin(a) * fl * 0.7f, Math.max(3, S * 0.012f), MathUtil.alpha(fc, 0.7f)); }
+        }
+        if (g.weapons.beamActive()) {
+            int bc = w.element != Loot.E_NONE ? Loot.ELEMENT_COLORS[w.element] : w.type.color;
+            gfx.line(mxs, mys, W / 2, H * 0.46f + p.viewPitch, 30, MathUtil.alpha(bc, 0.3f));
+            gfx.line(mxs, mys, W / 2, H * 0.46f + p.viewPitch, 10, MathUtil.alpha(0xFFFFFFFF, 0.9f));
+        }
+        return true;
     }
 
     /** The gun in your hands. */
@@ -239,6 +329,7 @@ public final class Renderer3D {
         float kick = w.recoil;
         float ox = W * 0.56f + bobX + turnSway + kick * 12f, oy = H * 0.84f + bobY + idle + sw * 300f + kick * 30f;
         float rot = -0.42f - kick * 0.18f + sw * 0.6f;
+        if (fpSprite(gfx, w, W, H, bobX + turnSway, bobY + idle, sw, kick, p)) return;
         float sc = 6.6f;
         // forearm + glove holding the grip
         gfx.line(W * 0.98f, H + 40, ox + 6, oy + 30, 64, 0xFF33402A);

@@ -11,6 +11,10 @@ public interface Platform {
     void promptText(String title, String initial, TextCallback cb);
     /** Hold Wi-Fi multicast/broadcast reception while multiplayer is active. */
     void setNetworkActive(boolean active);
+    /** Loads an image bundled with the app (assets/...); returns a platform image or null. */
+    Object loadImage(String assetPath);
+    /** Reads a bundled text asset (or null). */
+    String loadText(String assetPath);
 
     interface TextCallback { void done(String text); }
 }

@@ -32,7 +32,7 @@ echo "== Compiling resources"
 sed 's|<manifest xmlns:android="http://schemas.android.com/apk/res/android"|<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.blockkillers"|' \
   app/src/main/AndroidManifest.xml > "$B/AndroidManifest.xml"
 "$BT/aapt2" link -o "$B/base.apk" -I "$JAR" --manifest "$B/AndroidManifest.xml" \
-  --java "$B/gen" --min-sdk-version 24 --target-sdk-version $API --version-code 1 --version-name 1.0 "$B/res.zip"
+  --java "$B/gen" --min-sdk-version 24 --target-sdk-version $API --version-code 4 --version-name 3.1 -A app/src/main/assets "$B/res.zip"
 
 echo "== Compiling Java"
 mkdir -p "$B/classes"

@@ -24,4 +24,8 @@ public interface Gfx {
     void strokePoly(float[] pts, int n, float width, int c);
     void text(String s, float x, float y, float size, int c, int align, boolean bold);
     float textWidth(String s, float size, boolean bold);
+    /** Image tint modes for {@link #image}. */
+    int TINT_NONE = 0, TINT_MULTIPLY = 1, TINT_FLASH = 2;
+    /** Draws a sub-rectangle of a platform image into a destination rectangle (current transform applies). */
+    void image(Object img, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh, float alpha, int tintMode, int tint);
 }

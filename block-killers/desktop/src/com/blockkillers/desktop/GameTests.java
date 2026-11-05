@@ -911,6 +911,13 @@ public final class GameTests {
         boolean ok = true;
         try { for (int i = 0; i < 3; i++) g.render(new DesktopGfx(gr, 1080, 2400)); } catch (Exception e) { ok = false; e.printStackTrace(); }
         check("3D frame renders (walls, zombies, bosses, loot, gun in hand)", ok, null);
+        Sprites sp = g.sprites;
+        boolean all = sp != null && sp.ok;
+        if (all) { for (Object o2 : sp.zombies) all &= o2 != null; for (Object o2 : sp.survivors) all &= o2 != null; for (Object o2 : sp.bosses) all &= o2 != null; for (Object o2 : sp.fp) all &= o2 != null; }
+        check("CC0 3D model sprites load (11 zombies, 4 survivors, 3 bosses, 16 guns)", all, null);
+        boolean mapped = true;
+        for (int i = 0; i < Config.WEAPONS.length; i++) { int gi = sp.gunIndex(i); mapped &= Sprites.GUN_NAMES[gi].equals(Sprites.WEAPON_MODEL[i]) && sp.fpMuzzle[gi][0] > 0; }
+        check("every weapon type has a gun model with a muzzle point", mapped && Sprites.WEAPON_MODEL.length == Config.WEAPONS.length, null);
         // look + move relative to view
         float s = g.scale;
         float v0 = g.player.view;

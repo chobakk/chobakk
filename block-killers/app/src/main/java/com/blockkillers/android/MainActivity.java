@@ -108,6 +108,23 @@ public final class MainActivity extends Activity implements Platform {
         });
     }
 
+    @Override public Object loadImage(String path) {
+        try (java.io.InputStream in = getAssets().open(path)) {
+            android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+            o.inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888;
+            return android.graphics.BitmapFactory.decodeStream(in, null, o);
+        } catch (Exception e) { return null; }
+    }
+
+    @Override public String loadText(String path) {
+        try (java.io.InputStream in = getAssets().open(path)) {
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[8192]; int n;
+            while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+            return bo.toString("UTF-8");
+        } catch (Exception e) { return null; }
+    }
+
     private WifiManager.MulticastLock multicastLock;
 
     @Override public void setNetworkActive(boolean active) {

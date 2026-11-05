@@ -54,5 +54,16 @@ public final class DesktopGfx implements Gfx {
         float dx = align == ALIGN_CENTER ? -wd / 2 : (align == ALIGN_RIGHT ? -wd : 0);
         g.drawString(s, x + dx, y);
     }
+    @Override public void image(Object img, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh, float alpha, int mode, int tint) {
+        if (!(img instanceof java.awt.Image)) return;
+        java.awt.Composite old = g.getComposite();
+        if (alpha < 0.999f) g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.max(0f, Math.min(1f, alpha))));
+        java.awt.geom.AffineTransform t = g.getTransform();
+        g.translate(dx, dy); g.scale(dw / sw, dh / sh);
+        g.drawImage((java.awt.Image) img, 0, 0, Math.round(sw), Math.round(sh), (int) sx, (int) sy, (int) (sx + sw), (int) (sy + sh), null);
+        g.setTransform(t);
+        g.setComposite(old);
+        if (mode == TINT_FLASH) { /* desktop preview: skip */ }
+    }
     @Override public float textWidth(String s, float size, boolean bold) { g.setFont(font(size, bold)); return g.getFontMetrics().stringWidth(s); }
 }

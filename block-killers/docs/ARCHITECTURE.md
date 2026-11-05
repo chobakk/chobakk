@@ -54,6 +54,13 @@ Version 2 systems:
 
 Supporting classes: `Config` (all balance numbers in one place), `Strings` (EN/FA localisation), `WorldRenderer`, `ParticleSystem`, `Camera`, `SpatialGrid`, `EntityList` (object pool), `Shapes`, `MathUtil`.
 
+## 3D models (pre-rendered)
+- CC0 3D models are rendered offline with three.js in headless Chromium (`tools/render-models/`) into sprite sheets in `assets/sprites/`.
+- Character sheets have 8 columns (animation frames) and 9 rows: rows 0–7 are 8 facing directions relative to the viewer (45° steps), row 8 is the top-down view.
+- `Sprites` loads them via `Platform.loadImage`. `Gfx.image` draws a source rectangle with optional multiply tint (status effects, fog) or a flash tint.
+- `WorldRenderer` uses the top-down row. `Renderer3D` picks the row from the angle between the zombie's heading and the camera, and draws `fp_<gun>.png` as the first-person view-model.
+- `Zombies` (procedural art) stays as the fallback if an image is missing.
+
 ## Performance techniques
 - **Object pooling:** `EntityList<T>` preallocates enemies (600), projectiles (500), enemy bullets (400), particles (1200) and texts (90). Nothing is allocated per entity during play.
 - **Spatial hash grid** (80-unit cells) for every collision, separation, blade, chain and area query, instead of O(n²) checks.

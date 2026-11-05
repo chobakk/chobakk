@@ -19,6 +19,7 @@
         android:theme="@style/AppTheme"
         android:allowBackup="true"
         android:hardwareAccelerated="true"
+        android:largeHeap="true"
         android:resizeableActivity="false">
         <activity
             android:name=".android.MainActivity"

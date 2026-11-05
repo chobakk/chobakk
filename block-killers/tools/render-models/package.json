@@ -1,0 +1,6 @@
+{
+  "name": "zombie-killer-render-models",
+  "private": true,
+  "description": "Offline renderer: CC0 3D models -> sprite sheets for Zombie Killer",
+  "dependencies": { "three": "0.160.0" }
+}

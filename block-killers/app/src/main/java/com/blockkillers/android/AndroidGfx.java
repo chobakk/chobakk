@@ -18,6 +18,11 @@ final class AndroidGfx implements Gfx {
     private final RectF rf = new RectF();
     private final Typeface bold = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD);
     private final Typeface normal = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL);
+    private final Paint bmp = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+    private final android.graphics.Rect srcR = new android.graphics.Rect();
+    private final RectF dstR = new RectF();
+    private int lastTint = 0, lastMode = -1;
+    private android.graphics.ColorFilter filter;
 
     AndroidGfx() {
         fill.setStyle(Paint.Style.FILL);
@@ -65,6 +70,22 @@ final class AndroidGfx implements Gfx {
         text.setTextAlign(align == ALIGN_CENTER ? Paint.Align.CENTER : (align == ALIGN_RIGHT ? Paint.Align.RIGHT : Paint.Align.LEFT));
         c.drawText(s, x, y, text);
     }
+    @Override public void image(Object img, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh, float alpha, int mode, int tint) {
+        if (!(img instanceof android.graphics.Bitmap)) return;
+        srcR.set((int) sx, (int) sy, (int) (sx + sw), (int) (sy + sh));
+        dstR.set(dx, dy, dx + dw, dy + dh);
+        bmp.setAlpha((int) (Math.max(0f, Math.min(1f, alpha)) * 255));
+        if (mode == TINT_NONE) bmp.setColorFilter(null);
+        else {
+            if (mode != lastMode || tint != lastTint) {
+                filter = new android.graphics.PorterDuffColorFilter(tint, mode == TINT_FLASH ? android.graphics.PorterDuff.Mode.SRC_ATOP : android.graphics.PorterDuff.Mode.MULTIPLY);
+                lastMode = mode; lastTint = tint;
+            }
+            bmp.setColorFilter(filter);
+        }
+        c.drawBitmap((android.graphics.Bitmap) img, srcR, dstR, bmp);
+    }
+
     @Override public float textWidth(String s, float size, boolean b) {
         text.setTextSize(size); text.setTypeface(b ? bold : normal);
         return text.measureText(s);

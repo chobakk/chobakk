@@ -43,6 +43,7 @@ public final class Game {
     public final WorldRenderer world;
     public Renderer3D world3D;
     public HudLayout layout;
+    public Sprites sprites;
     /** Pointer used for first-person look (3D). */
     private int lookPointer = -1;
     private float lookX, lookY;
@@ -110,6 +111,7 @@ public final class Game {
         world = new WorldRenderer(this);
         world3D = new Renderer3D(this);
         layout = new HudLayout(platform.storage());
+        sprites = new Sprites(platform);
         player.reset(bonus);
         map.generate(1, WorldMap.OPEN);
     }

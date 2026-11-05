@@ -2,7 +2,7 @@
 
 An endless zombie-survival shooter for Android. Play in **2D top-down** or **3D first person** (gun in your hands, with sway, bob, recoil, muzzle flash and swap animations), solo or **multiplayer**: same-phone split screen, Wi-Fi, or online through a small relay server, in co-op, PvP or PvPvE.
 
-**APK:** [`release/Zombie-Killer.apk`](release/Zombie-Killer.apk) (≈250 KB, Android 7.0+ / API 24–34; offline except multiplayer)
+**APK:** [`release/Zombie-Killer.apk`](release/Zombie-Killer.apk) (≈1.3 MB, Android 7.0+ / API 24–34; offline except multiplayer)
 
 | Menu | Gameplay | Level up | Boss | Game over |
 |---|---|---|---|---|
@@ -13,8 +13,17 @@ An endless zombie-survival shooter for Android. Play in **2D top-down** or **3D 
 ## Install on your phone
 1. Copy `release/Zombie-Killer.apk` to the phone (or download it there) and tap it.
 2. Allow "Install unknown apps" for the app you opened it with (browser / file manager / messenger).
-3. If Play Protect warns about an unknown developer, choose **Install anyway**. The app is self-signed, and the only permission it asks for is vibration. It has no internet permission.
+3. If Play Protect warns about an unknown developer, choose **Install anyway**. The app is self-signed, and it asks for vibration and network (network is used only for multiplayer).
 
+
+## What's new in v3.1 — real 3D models
+- Zombies, survivors, boss zombies and guns are now **real 3D models** (all CC0 / public domain, see [CREDITS.md](CREDITS.md)), rendered into sprites with lighting:
+  - Kenney animated characters (zombie, survivor and human skins) for the 11 zombie types and the 4 survivors, with walk / run / crawl poses, riot shields and helmets.
+  - The "Darsh" undead creature (OpenGameArt) for the 3 boss zombies.
+  - Quaternius low-poly guns (pistol, SMG, shotgun, rifle, sniper) and Kenney blasters for the special weapons.
+- **2D:** top-down models turned to face where they walk, tinted by burn / frost / acid / slag and flashing white on hits. Your survivor holds the active gun.
+- **3D:** zombies are shown from 8 directions, so you see them from the front, side or back as they move. Fog applies to them. The gun in your hands is the 3D gun model, with bob, sway, recoil, muzzle flash and swap animations.
+- The old hand-drawn art is kept as a fallback.
 
 ## What's new in v3 — Zombie Killer
 - **Zombies:** original hand-coded zombie designs with walk animations:
@@ -86,7 +95,7 @@ Both builds sign with `signing/block-killers.jks` (password `blockkillers`). Thi
 
 ## Tests
 ```bash
-tools/run-tests.sh            # 254 automated checks incl. real-socket multiplayer (headless, ~10 s)
+tools/run-tests.sh            # 256 automated checks incl. real-socket multiplayer (headless, ~10 s)
 tools/run-tests.sh screens    # renders every screen to docs/screenshots/
 tools/run-tests.sh assets     # regenerates launcher icons + splash logo
 ```

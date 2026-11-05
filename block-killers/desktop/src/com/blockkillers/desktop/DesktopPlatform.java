@@ -29,6 +29,22 @@ public final class DesktopPlatform implements Platform {
         if (a != null) cb.done(a);
     }
     public boolean networkActive;
+    public static java.io.File assetDir = new java.io.File("app/src/main/assets");
+    private static final java.util.HashMap<String, Object> IMG = new java.util.HashMap<>();
+    @Override public Object loadImage(String path) {
+        synchronized (IMG) {
+            if (IMG.containsKey(path)) return IMG.get(path);
+            Object o = null;
+            try { java.awt.image.BufferedImage b = javax.imageio.ImageIO.read(new java.io.File(assetDir, path));
+                if (b != null) { java.awt.image.BufferedImage c = new java.awt.image.BufferedImage(b.getWidth(), b.getHeight(), java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                    c.getGraphics().drawImage(b, 0, 0, null); o = c; } } catch (Exception ignored) {}
+            IMG.put(path, o);
+            return o;
+        }
+    }
+    @Override public String loadText(String path) {
+        try { return new String(java.nio.file.Files.readAllBytes(new java.io.File(assetDir, path).toPath()), "UTF-8"); } catch (Exception e) { return null; }
+    }
     @Override public void setNetworkActive(boolean active) { networkActive = active; }
 
     public static final class MemStorage implements Storage {
