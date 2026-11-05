@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- zombie head -->
+    <path android:fillColor="#8FA37A" android:pathData="M54,56 m-16,0 a16,16 0 1,1 32,0 a16,16 0 1,1 -32,0" />
+    <path android:fillColor="#6E7F5C" android:pathData="M38,54 a16,16 0 0,1 32,0 Z" />
+    <path android:fillColor="#FFE066" android:pathData="M48,55 m-3,0 a3,3 0 1,1 6,0 a3,3 0 1,1 -6,0" />
+    <path android:fillColor="#FFE066" android:pathData="M60,55 m-3,0 a3,3 0 1,1 6,0 a3,3 0 1,1 -6,0" />
+    <path android:fillColor="#3D0507" android:pathData="M47,63 h14 v3 h-14 Z" />
+    <path android:fillColor="#7A0E12" android:pathData="M63,47 m-2.5,0 a2.5,2.5 0 1,1 5,0 a2.5,2.5 0 1,1 -5,0" />
+    <!-- crosshair -->
+    <path android:strokeColor="#E53935" android:strokeWidth="2.5" android:pathData="M54,54 m-24,0 a24,24 0 1,1 48,0 a24,24 0 1,1 -48,0" />
+    <path android:strokeColor="#E53935" android:strokeWidth="2.5" android:pathData="M24,54 h10 M74,54 h10 M54,24 v10 M54,74 v10" />
+</vector>
