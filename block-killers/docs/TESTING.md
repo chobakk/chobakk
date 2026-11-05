@@ -6,9 +6,30 @@ This build environment has **no KVM**, so an Android emulator could not run, and
 
 | Layer | What runs | Result |
 |---|---|---|
-| 1. Headless gameplay suite (`tools/run-tests.sh`) | the real `core` game code, driven through real button positions and a bot player | **203 / 203 passed** |
+| 1. Headless gameplay suite (`tools/run-tests.sh`) | the real `core` game code, driven through real button positions and a bot player | **254 / 254 passed** |
 | 2. Robolectric (`gradle :app:testDebugUnitTest`) | the real **Android layer**: `MainActivity` lifecycle, `GameView` driven by `Choreographer` vsync, `MotionEvent` touches, `AndroidGfx` on a native Skia `Canvas`, `SharedPreferences`, SoundPool/AudioTrack, back button, relaunch, hotbar switching, shop + developer menu persistence, corridor map | **5 / 5 passed** |
 | 3. APK verification | `aapt2 dump badging`, `dexdump`, `apksigner verify` | package `com.blockkillers`, minSdk 24, targetSdk 34, launcher activity present, only `VIBRATE` permission, v2+v3 signatures valid, no desktop classes in the dex |
+
+## Version 3 additions (checks 204–254)
+- **Multiplayer over real TCP sockets on this machine:**
+  - Wi-Fi host/client: lobby, names, start, identical map on both, client sees the horde.
+  - The client's joystick moves its player on the host, and the client sees its own position.
+  - Hotbar mirroring, gun switching, and non-pausing level-up cards applied by the host.
+  - Snapshots stay compact (under 40 KB even with a full horde); the host notices a player leaving.
+  - **Online relay:** room code, joining by code, a PvPvE match through the relay, a wrong code failing cleanly.
+  - Wi-Fi discovery beacon received.
+- **Same phone:** the left and right halves steer separate players, each with their own hotbar and companion.
+  - Co-op downs and revives, game over when everyone is down.
+  - PvP damage scaling, kill scoring and respawn, the match clock and rankings.
+  - PvPvE spawns the horde.
+- **3D:** the View setting, wall ray casting at the right distance, full 3D frames rendering, look-drag turning, movement along the view, and crosshair-cone auto-fire (ignores zombies behind you).
+- **Control layout editor:** drag, resize, Done, kept after a restart, reset.
+- **Zombie art:** all zombie types, mutated tiers and boss zombies render.
+- **Bugs found in v3:**
+  - an array too small for the zombie drawing;
+  - the editor's −/+ toolbar overlapped the hotbar;
+  - your own bullets showed as huge blobs at the 3D muzzle;
+  - the multiplayer BACK button was drawn as a settings row.
 
 ## Version 2 additions (checks 100–203)
 - **Hotbar:** tapping switches guns, only the held gun fires, and the gun aims at the target.

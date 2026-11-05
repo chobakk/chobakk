@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds release/Block-Killers.apk with the plain Android SDK command-line tools (no Gradle needed).
+# Builds release/Zombie-Killer.apk with the plain Android SDK command-line tools (no Gradle needed).
 #   ANDROID_HOME  Android SDK location (default: ~/android-sdk; installed automatically if missing)
 # Steps: aapt2 compile/link -> javac -> d8 (dex) -> zipalign -> apksigner (v1+v2+v3 signature)
 set -euo pipefail
@@ -56,8 +56,8 @@ if [ ! -f "$KS" ]; then
     -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Block Killers, O=Block Killers"
 fi
 "$BT/apksigner" sign --ks "$KS" --ks-pass pass:blockkillers --key-pass pass:blockkillers \
-  --out release/Block-Killers.apk "$B/aligned.apk"
-rm -f release/Block-Killers.apk.idsig
-"$BT/apksigner" verify --verbose release/Block-Killers.apk | head -4
-ls -l release/Block-Killers.apk
-echo "== Done: release/Block-Killers.apk"
+  --out release/Zombie-Killer.apk "$B/aligned.apk"
+rm -f release/Zombie-Killer.apk.idsig
+"$BT/apksigner" verify --verbose release/Zombie-Killer.apk | head -4
+ls -l release/Zombie-Killer.apk
+echo "== Done: release/Zombie-Killer.apk"

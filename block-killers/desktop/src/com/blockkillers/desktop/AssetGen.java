@@ -27,15 +27,22 @@ public final class AssetGen {
         System.out.println("assets written to " + res);
     }
 
+    /** Zombie head in a red crosshair (original design). */
     static void drawEmblem(Gfx g, float cx, float cy, float s) {
-        Shapes.draw(g, Shapes.SQUARE, cx - 0.30f * s, cy - 0.24f * s, 0.11f * s, 0.6f, 0xFFFF3D6E);
-        Shapes.draw(g, Shapes.TRIANGLE, cx + 0.28f * s, cy - 0.26f * s, 0.12f * s, 0f, 0xFFFFB300);
-        Shapes.draw(g, Shapes.PENTAGON, cx, cy + 0.30f * s, 0.11f * s, 0f, 0xFF9D6BFF);
-        g.line(cx + 0.06f * s, cy - 0.07f * s, cx + 0.15f * s, cy - 0.16f * s, 0.03f * s, 0xFF80D8FF);
-        g.line(cx - 0.07f * s, cy - 0.07f * s, cx - 0.14f * s, cy - 0.15f * s, 0.03f * s, 0xFF80D8FF);
-        g.circle(cx, cy, 0.17f * s, 0x5540C4FF);
-        g.circle(cx, cy, 0.12f * s, 0xFF40C4FF);
-        g.circle(cx, cy, 0.07f * s, 0xFFFFFFFF);
+        float r = s * 0.2f;
+        g.circle(cx, cy + r * 0.15f, r * 1.05f, 0xFF8FA37A);                     // head
+        g.arc(cx, cy + r * 0.15f, r * 1.07f, (float) Math.PI, (float) Math.PI, 0xFF6E7F5C); // scalp shadow
+        g.circle(cx - r * 0.38f, cy + r * 0.05f, r * 0.2f, 0xFFFFE066);          // eyes
+        g.circle(cx + r * 0.38f, cy + r * 0.05f, r * 0.2f, 0xFFFFE066);
+        g.rect(cx - r * 0.42f, cy + r * 0.55f, cx + r * 0.42f, cy + r * 0.72f, 0xFF3D0507); // mouth
+        for (int i = -1; i <= 1; i++) g.rect(cx + i * r * 0.25f - r * 0.05f, cy + r * 0.55f, cx + i * r * 0.25f + r * 0.05f, cy + r * 0.66f, 0xFFE0E0C0);
+        g.circle(cx + r * 0.55f, cy - r * 0.45f, r * 0.18f, 0xFF7A0E12);         // wound
+        float cr = s * 0.32f;
+        g.ring(cx, cy, cr, s * 0.025f, 0xFFE53935);                               // crosshair
+        g.line(cx - cr * 1.25f, cy, cx - cr * 0.7f, cy, s * 0.025f, 0xFFE53935);
+        g.line(cx + cr * 0.7f, cy, cx + cr * 1.25f, cy, s * 0.025f, 0xFFE53935);
+        g.line(cx, cy - cr * 1.25f, cx, cy - cr * 0.7f, s * 0.025f, 0xFFE53935);
+        g.line(cx, cy + cr * 0.7f, cx, cy + cr * 1.25f, s * 0.025f, 0xFFE53935);
     }
 
     static BufferedImage icon(int px, boolean round) {
@@ -43,10 +50,10 @@ public final class AssetGen {
         Graphics2D gr = img.createGraphics();
         DesktopGfx g = new DesktopGfx(gr, px, px);
         float m = px * 0.04f;
-        if (round) g.circle(px / 2f, px / 2f, px / 2f - m, 0xFF0B1022);
-        else g.roundRect(m, m, px - m, px - m, px * 0.18f, 0xFF0B1022);
-        if (round) g.ring(px / 2f, px / 2f, px / 2f - m - px * 0.01f, px * 0.02f, 0x6618FFFF);
-        else g.strokeRoundRect(m + px * 0.01f, m + px * 0.01f, px - m - px * 0.01f, px - m - px * 0.01f, px * 0.17f, px * 0.02f, 0x6618FFFF);
+        if (round) g.circle(px / 2f, px / 2f, px / 2f - m, 0xFF101A10);
+        else g.roundRect(m, m, px - m, px - m, px * 0.18f, 0xFF101A10);
+        if (round) g.ring(px / 2f, px / 2f, px / 2f - m - px * 0.01f, px * 0.02f, 0x66E53935);
+        else g.strokeRoundRect(m + px * 0.01f, m + px * 0.01f, px - m - px * 0.01f, px - m - px * 0.01f, px * 0.17f, px * 0.02f, 0x66E53935);
         drawEmblem(g, px / 2f, px / 2f, px * 1.25f);
         gr.dispose();
         return img;
@@ -58,10 +65,10 @@ public final class AssetGen {
         Graphics2D gr = img.createGraphics();
         DesktopGfx g = new DesktopGfx(gr, w, h);
         drawEmblem(g, w / 2f, 170, 420);
-        g.text("BLOCK", w / 2f + 3, 400 + 3, 110, 0xFF000000, Gfx.ALIGN_CENTER, true);
-        g.text("BLOCK", w / 2f, 400, 110, 0xFF18FFFF, Gfx.ALIGN_CENTER, true);
-        g.text("KILLERS", w / 2f + 3, 510 + 3, 110, 0xFF000000, Gfx.ALIGN_CENTER, true);
-        g.text("KILLERS", w / 2f, 510, 110, 0xFFFF4081, Gfx.ALIGN_CENTER, true);
+        g.text("ZOMBIE", w / 2f + 3, 400 + 3, 110, 0xFF000000, Gfx.ALIGN_CENTER, true);
+        g.text("ZOMBIE", w / 2f, 400, 110, 0xFF8BC34A, Gfx.ALIGN_CENTER, true);
+        g.text("KILLER", w / 2f + 3, 510 + 3, 110, 0xFF000000, Gfx.ALIGN_CENTER, true);
+        g.text("KILLER", w / 2f, 510, 110, 0xFFE53935, Gfx.ALIGN_CENTER, true);
         gr.dispose();
         return img;
     }

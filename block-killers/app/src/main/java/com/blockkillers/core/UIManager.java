@@ -9,39 +9,42 @@ public final class UIManager {
             A_BACK = 8, A_PAUSE = 9, A_ABILITY = 10, A_CARD0 = 11, A_CARD1 = 12, A_CARD2 = 13, A_VIB = 14, A_SHAKE = 15,
             A_QUALITY = 16, A_BATTERY = 17, A_LANG = 18, A_MUSIC = 19, A_SFX = 20, A_SENS = 21, A_DMGNUM = 22,
             A_MAP = 23, A_PICKUP = 24, A_SLOT0 = 25, A_LOOT_SLOT0 = 30, A_LOOT_SCRAP = 35, A_LOOT_LEAVE = 36, A_MAP_BACK = 37,
-            A_SHOP = 40, A_DEV = 41, A_MAPSEL0 = 42, A_MEME = 45, A_SHOP_ROW0 = 50, A_DEV_ROW0 = 70;
+            A_MULTI = 46, A_VIEW = 47, A_LAYOUT = 48, A_LAY_MINUS = 49, A_LAY_PLUS = 160, A_LAY_RESET = 161, A_LAY_DONE = 162, A_SHOP = 40, A_DEV = 41, A_MAPSEL0 = 42, A_MEME = 45, A_SHOP_ROW0 = 50, A_DEV_ROW0 = 70;
 
-    static final int B_BUTTON = 0, B_SLIDER = 1, B_TOGGLE = 2, B_CYCLE = 3, B_CARD = 4, B_ICON = 5;
+    public static final int B_BUTTON = 0, B_SLIDER = 1, B_TOGGLE = 2, B_CYCLE = 3, B_CARD = 4, B_ICON = 5;
 
     public static final class Button {
         public float l, t, r, b;
         public int action, kind, color;
         public String key;
         public boolean enabled = true;
-        Button(int action, int kind, String key, int color) { this.action = action; this.kind = kind; this.key = key; this.color = color; }
-        void set(float l, float t, float r, float b) { this.l = l; this.t = t; this.r = r; this.b = b; }
+        public Button(int action, int kind, String key, int color) { this.action = action; this.kind = kind; this.key = key; this.color = color; }
+        public void set(float l, float t, float r, float b) { this.l = l; this.t = t; this.r = r; this.b = b; }
         public boolean hit(float x, float y) { return enabled && x >= l - 6 && x <= r + 6 && y >= t - 6 && y <= b + 6; }
         public float cx() { return (l + r) / 2; }
         public float cy() { return (t + b) / 2; }
     }
 
-    private static final int NEON = 0xFF18FFFF, PINK = 0xFFFF4081, GOLD = 0xFFFFD740, PANEL = 0xE60B1022;
+    static final int NEON = 0xFF18FFFF, PINK = 0xFFFF4081, GOLD = 0xFFFFD740, PANEL = 0xE60B1022;
 
     private final Game g;
     private final ArrayList<Button> menuB = new ArrayList<>(), hudB = new ArrayList<>(), pauseB = new ArrayList<>(),
-            levelB = new ArrayList<>(), lootB = new ArrayList<>(), mapB = new ArrayList<>(), mapSelB = new ArrayList<>(), shopB = new ArrayList<>(), devB = new ArrayList<>(), overB = new ArrayList<>(), setB = new ArrayList<>(), statB = new ArrayList<>();
-    private Button pressed;
+            levelB = new ArrayList<>(), lootB = new ArrayList<>(), mapB = new ArrayList<>(), mapSelB = new ArrayList<>(), layB = new ArrayList<>(), shopB = new ArrayList<>(), devB = new ArrayList<>(), overB = new ArrayList<>(), setB = new ArrayList<>(), statB = new ArrayList<>();
+    Button pressed;
     private int pressedPointer = -1;
     private Button slider;
     private int sliderPointer = -1;
     private float levelOpenTime;
+    MpUI mp;
 
     // announcements
     private String annTitle, annSub;
     private float annTimer;
 
-    // menu background
+    // menu background: shambling zombies
     private final float[][] bg = new float[26][6];
+    private final Enemy[] bgZ = new Enemy[26];
+    private final Enemy logoZ = new Enemy();
 
     public UIManager(Game g) {
         this.g = g;
@@ -51,6 +54,7 @@ public final class UIManager {
         menuB.add(new Button(A_EXIT, B_BUTTON, "exit", PINK));
         menuB.add(new Button(A_SHOP, B_BUTTON, "shop", GOLD));
         menuB.add(new Button(A_DEV, B_BUTTON, "dev_menu", 0xFF69F0AE));
+        menuB.add(new Button(A_MULTI, B_BUTTON, "multiplayer", 0xFFFF4081));
         for (int i = 0; i < WorldMap.MODES; i++) mapSelB.add(new Button(A_MAPSEL0 + i, B_CARD, "", NEON));
         mapSelB.add(new Button(A_BACK, B_BUTTON, "back", PINK));
         for (int i = 0; i < ShopManager.COUNT; i++) shopB.add(new Button(A_SHOP_ROW0 + i, B_CARD, "", GOLD));
@@ -85,9 +89,18 @@ public final class UIManager {
         setB.add(new Button(A_BATTERY, B_CYCLE, "performance", GOLD));
         setB.add(new Button(A_LANG, B_CYCLE, "language", GOLD));
         setB.add(new Button(A_MEME, B_TOGGLE, "meme_sounds", 0xFFFF4081));
+        setB.add(new Button(A_VIEW, B_CYCLE, "view_mode", 0xFF8BC34A));
+        setB.add(new Button(A_LAYOUT, B_CYCLE, "edit_layout", 0xFF8BC34A));
+        layB.add(new Button(A_LAY_MINUS, B_BUTTON, "lay_smaller", NEON));
+        layB.add(new Button(A_LAY_PLUS, B_BUTTON, "lay_bigger", NEON));
+        layB.add(new Button(A_LAY_RESET, B_BUTTON, "lay_reset", GOLD));
+        layB.add(new Button(A_LAY_DONE, B_BUTTON, "lay_done", 0xFF00E676));
         setB.add(new Button(A_BACK, B_BUTTON, "back", PINK));
         statB.add(new Button(A_BACK, B_BUTTON, "back", PINK));
         for (float[] s : bg) resetBg(s, true);
+        for (int i = 0; i < bgZ.length; i++) { bgZ[i] = new Enemy(); bgZ[i].init(Config.ENEMIES[i % 10], 0, 0, 1, 1, 1); }
+        logoZ.init(Config.ENEMIES[0], 0, 0, 1, 1, 1);
+        mp = new MpUI(g, this);
     }
 
     private void resetBg(float[] s, boolean anywhere) {
@@ -102,14 +115,15 @@ public final class UIManager {
     // ------------------------------------------------------------------ layout
     public void layout() {
         float W = g.viewW, H = g.viewH;
-        float bw = 460, bh = 76, y = Math.max(H * 0.44f, 520);
-        int[] order = {0, 4, 1, 2, 5, 3};   // PLAY, SHOP, SETTINGS, STATISTICS, DEV, EXIT
+        float bw = 460, bh = 68, y = Math.max(H * 0.42f, 500);
+        int[] order = {0, 6, 4, 1, 2, 5, 3};   // PLAY, MULTIPLAYER, SHOP, SETTINGS, STATISTICS, DEV, EXIT
         for (int i : order) {
             Button b = menuB.get(i);
             float h = i == 0 ? bh + 20 : bh;
             b.set(W / 2 - bw / 2, y, W / 2 + bw / 2, y + h);
-            y += h + 14;
+            y += h + 11;
         }
+        if (mp != null) mp.layout(W, H);
         float mh = Math.min(230, (H - 330) / 3f - 16);
         for (int i = 0; i < WorldMap.MODES; i++) mapSelB.get(i).set(40, 160 + i * (mh + 16), W - 40, 160 + i * (mh + 16) + mh);
         mapSelB.get(WorldMap.MODES).set(W / 2 - 180, H - 120, W / 2 + 180, H - 44);
@@ -125,6 +139,10 @@ public final class UIManager {
         hudB.get(3).set(W / 2 - 160, H - 255, W / 2 + 160, H - 165);
         float hs = 100, hg = 10, hx = (W - (hs * Config.HOTBAR + hg * (Config.HOTBAR - 1))) / 2f;
         for (int i = 0; i < Config.HOTBAR; i++) hudB.get(4 + i).set(hx + i * (hs + hg), H - 140, hx + i * (hs + hg) + hs, H - 40);
+        applyHudLayout(W, H);
+        float tw = (W - 50) / 4f;
+        float ly = H * 0.42f;
+        for (int i = 0; i < 4; i++) layB.get(i).set(10 + i * (tw + 10), ly, 10 + i * (tw + 10) + tw, ly + 65);
         float lrow = Math.min(80, (H - 170 - 548) / 5f);
         for (int i = 0; i < Config.HOTBAR; i++) lootB.get(i).set(40, 548 + i * lrow, W - 40, 548 + i * lrow + lrow - 8);
         lootB.get(5).set(40, H - 140, W / 2 - 10, H - 50);
@@ -137,7 +155,7 @@ public final class UIManager {
         for (Button b : levelB) { b.set(40, y, W - 40, y + ch); y += ch + 22; }
         y = H * 0.70f;
         for (Button b : overB) { b.set(W / 2 - bw / 2, y, W / 2 + bw / 2, y + bh); y += bh + 20; }
-        float row = Math.min(88, (H - 360) / 11f);
+        float row = Math.min(84, (H - 360) / 13f);
         y = 150;
         for (int i = 0; i < setB.size() - 1; i++) { setB.get(i).set(40, y, W - 40, y + row - 12); y += row; }
         setB.get(setB.size() - 1).set(W / 2 - 180, H - 130, W / 2 + 180, H - 50);
@@ -158,6 +176,8 @@ public final class UIManager {
             case Game.S_MAPSELECT: return mapSelB;
             case Game.S_SHOP: return shopB;
             case Game.S_DEV: return devB;
+            case Game.S_LAYOUT: return layB;
+            case Game.S_MPMENU: case Game.S_LOBBY: case Game.S_MPRESULT: return mp.buttons();
             default: return null;
         }
     }
@@ -172,6 +192,9 @@ public final class UIManager {
     public Button statsButton(int i) { return statB.get(i); }
     public Button lootButton(int i) { return lootB.get(i); }
     public Button mapButton(int i) { return mapB.get(i); }
+    public Button layoutButton(int i) { return layB.get(i); }
+    /** Multiplayer standings (best first). */
+    public Hero[] rankedPlayers() { return mp.ranked(); }
     public Button mapSelectButton(int i) { return mapSelB.get(i); }
     public Button shopButton(int i) { return shopB.get(i); }
     public Button devButton(int i) { return devB.get(i); }
@@ -182,21 +205,35 @@ public final class UIManager {
         for (int i = 0; i < 3; i++) levelB.get(i).enabled = i < g.upgrades.cardCount;
     }
 
-    public void announce(String title, String sub) { annTitle = title; annSub = sub; annTimer = 2.6f; }
+    public void announce(String title, String sub) { g.netEvents.announce(title, sub); annTitle = title; annSub = sub; annTimer = 2.6f; }
 
     // ------------------------------------------------------------------ input
     public boolean touchDown(int id, float x, float y) {
+        if (g.state == Game.S_LAYOUT) {
+            for (Button b : layB) if (b.hit(x, y)) { pressed = b; pressedPointer = id; return true; }
+            int el = hudElementAt(x, y);
+            if (el >= 0) { layoutSel = el; dragPointer = id; dragX = x; dragY = y; }
+            return true;
+        }
         ArrayList<Button> bs = buttons();
         if (bs == null) return false;
         menuB.get(3).enabled = g.platform.canExit();
-        hudB.get(3).enabled = g.loot.nearby != null;
+        hudB.get(3).enabled = g.loot.nearby != null && !g.mp();
+        if (g.state == Game.S_PLAYING && g.mp()) {
+            if (mp.touchGame(id, x, y)) { if (mp.pauseOpen) pressedPointer = id; return true; }
+            if (g.splitScreen) {
+                Button pb = hudB.get(0);
+                if (pb.hit(x, y)) { pressed = pb; pressedPointer = id; return true; }
+                return false;
+            }
+        }
         if (g.state == Game.S_LEVELUP && g.realTime - levelOpenTime < 0.45f) return true;
         if (g.state == Game.S_GAMEOVER && g.gameOverTimer < 0.8f) return true;
         for (Button b : bs) {
             if (!b.hit(x, y)) continue;
             if (b.kind == B_SLIDER) { slider = b; sliderPointer = id; setSlider(b, x); return true; }
-            if (b.action == A_ABILITY) { g.playerCtl.useAbility(); return true; }
-            if (b.action >= A_SLOT0 && b.action < A_SLOT0 + Config.HOTBAR) { g.weapons.select(b.action - A_SLOT0); return true; }
+            if (b.action == A_ABILITY) { if (g.isClient()) g.mpm.action(g.heroes[g.localHero], com.blockkillers.core.net.NetSync.A_ABILITY, 0); else g.playerCtl.useAbility(); return true; }
+            if (b.action >= A_SLOT0 && b.action < A_SLOT0 + Config.HOTBAR) { g.mpm.action(g.heroes[g.localHero], com.blockkillers.core.net.NetSync.A_SLOT, b.action - A_SLOT0); return true; }
             pressed = b; pressedPointer = id;
             return true;
         }
@@ -205,10 +242,17 @@ public final class UIManager {
     }
 
     public void touchMove(int id, float x, float y) {
+        if (g.state == Game.S_LAYOUT && id == dragPointer) {
+            g.layout.dx[layoutSel] += x - dragX; g.layout.dy[layoutSel] += y - dragY;
+            dragX = x; dragY = y;
+            layout();
+            return;
+        }
         if (slider != null && id == sliderPointer) setSlider(slider, x);
     }
 
     public void touchUp(int id, float x, float y) {
+        if (id == dragPointer) { dragPointer = -1; g.layout.save(); }
         if (slider != null && id == sliderPointer) {
             slider = null; sliderPointer = -1;
             g.settings.save();
@@ -218,7 +262,7 @@ public final class UIManager {
         if (pressed != null && id == pressedPointer) {
             Button b = pressed;
             pressed = null; pressedPointer = -1;
-            if (b.hit(x, y) && buttons() != null && buttons().contains(b)) action(b.action);
+            if (b.hit(x, y) && ((buttons() != null && buttons().contains(b)) || mp.pauseB.contains(b))) action(b.action);
         }
     }
 
@@ -248,9 +292,12 @@ public final class UIManager {
     /** Executes a UI action (public so automated tests can drive the UI). */
     public void action(int a) {
         if (a != A_PAUSE) g.audio.play(Sfx.CLICK);
+        if (a >= 100 && mp.action(a)) return;
+        if (a == A_PAUSE && g.mp()) { mp.pauseOpen = true; return; }
         SettingsManager s = g.settings;
         switch (a) {
             case A_PLAY: g.state = Game.S_MAPSELECT; break;
+            case A_MULTI: g.mpm.lastError = null; g.state = Game.S_MPMENU; g.mpm.startDiscovery(); break;
             case A_SHOP: g.state = Game.S_SHOP; break;
             case A_DEV: g.state = Game.S_DEV; break;
             case A_MEME: s.memeSounds = !s.memeSounds; s.save(); if (s.memeSounds) g.audio.play(Sfx.AIRHORN); break;
@@ -273,6 +320,15 @@ public final class UIManager {
             case A_BATTERY: s.batterySaver = !s.batterySaver; s.save(); break;
             case A_LANG: s.language = (s.language + 1) % 2; s.save(); break;
             case A_MAP: g.openMap(); break;
+            case A_VIEW: s.view3D = !s.view3D; s.save(); break;
+            case A_LAYOUT: g.state = Game.S_LAYOUT; layoutSel = HudLayout.HOTBAR; break;
+            case A_LAY_MINUS: case A_LAY_PLUS: {
+                HudLayout L = g.layout;
+                L.scale[layoutSel] = MathUtil.clamp(L.scale[layoutSel] + (a == A_LAY_PLUS ? 0.1f : -0.1f), 0.6f, 1.6f);
+                layout(); break;
+            }
+            case A_LAY_RESET: g.layout.reset(); layout(); break;
+            case A_LAY_DONE: g.layout.save(); g.state = Game.S_SETTINGS; break;
             case A_MAP_BACK: g.closeMap(); break;
             case A_PICKUP: g.openLoot(); break;
             case A_LOOT_SCRAP: g.loot.scrap(); g.closeLoot(); break;
@@ -304,17 +360,22 @@ public final class UIManager {
         float W = g.viewW, H = g.viewH;
         for (float y = 0; y < H; y += 80) gfx.line(0, y, W, y, 1, 0x1418FFFF);
         for (float x = 0; x < W; x += 80) gfx.line(x, 0, x, H, 1, 0x1418FFFF);
-        for (float[] s : bg) {
-            EnemyType et = Config.ENEMIES[(int) s[5]];
-            Shapes.draw(gfx, et.shape, s[0], s[1], s[2] * 1.4f, s[4], MathUtil.alpha(et.color, 0.10f));
-            Shapes.draw(gfx, et.shape, s[0], s[1], s[2], s[4], MathUtil.alpha(et.color, 0.45f));
+        for (int i = 0; i < bg.length; i++) {
+            float[] s = bg[i];
+            Enemy z = bgZ[i];
+            z.x = s[0]; z.y = s[1]; z.vx = MathUtil.sin(s[4]) * 0.3f; z.vy = 1; z.t = g.realTime + i;
+            Zombies.drawTop(gfx, z, s[2] * 0.8f);
         }
+        gfx.rect(0, 0, W, H, 0x66070B16);
     }
 
     public void render(Gfx gfx) {
         switch (g.state) {
             case Game.S_MENU: renderMenu(gfx); break;
-            case Game.S_PLAYING: renderHud(gfx); break;
+            case Game.S_PLAYING: if (g.mp()) { if (!g.splitScreen) renderHud(gfx); else renderSplitTop(gfx); mp.renderGame(gfx); } else renderHud(gfx); break;
+            case Game.S_MPMENU: dim(gfx, 0xC0070B16); mp.renderMenu(gfx); break;
+            case Game.S_LOBBY: dim(gfx, 0xC0070B16); mp.renderLobby(gfx); break;
+            case Game.S_MPRESULT: mp.renderResults(gfx); break;
             case Game.S_PAUSED: renderHud(gfx); renderPause(gfx); break;
             case Game.S_LEVELUP: renderHud(gfx); renderLevelUp(gfx); break;
             case Game.S_GAMEOVER: renderGameOver(gfx); break;
@@ -325,27 +386,28 @@ public final class UIManager {
             case Game.S_MAPSELECT: dim(gfx, 0xB3070B16); renderMapSelect(gfx); break;
             case Game.S_SHOP: dim(gfx, 0xC0070B16); renderShop(gfx); break;
             case Game.S_DEV: dim(gfx, 0xD0070B16); renderDev(gfx); break;
+            case Game.S_LAYOUT: renderLayoutEditor(gfx); break;
         }
         renderToast(gfx);
     }
 
-    private String s(String key) { return g.strings.get(key); }
+    String s(String key) { return g.strings.get(key); }
 
     /** Largest text size (<= size) at which t fits in maxW. */
-    private float fit(Gfx gfx, String t, float maxW, float size, boolean bold) {
+    float fit(Gfx gfx, String t, float maxW, float size, boolean bold) {
         float w = gfx.textWidth(t, size, bold);
         return w <= maxW ? size : Math.max(12f, size * maxW / w);
     }
 
-    private void dim(Gfx gfx, int c) { gfx.rect(0, 0, g.viewW, g.viewH, c); }
+    void dim(Gfx gfx, int c) { gfx.rect(0, 0, g.viewW, g.viewH, c); }
 
-    private void neonText(Gfx gfx, String t, float x, float y, float size, int color) {
+    void neonText(Gfx gfx, String t, float x, float y, float size, int color) {
         gfx.text(t, x, y + 4, size, MathUtil.alpha(color, 0.25f), Gfx.ALIGN_CENTER, true);
         gfx.text(t, x + 2, y + 2, size, 0xFF000000, Gfx.ALIGN_CENTER, true);
         gfx.text(t, x, y, size, color, Gfx.ALIGN_CENTER, true);
     }
 
-    private void drawButton(Gfx gfx, Button b) {
+    void drawButton(Gfx gfx, Button b) {
         boolean down = b == pressed;
         int fill = down ? MathUtil.alpha(b.color, 0.35f) : 0xCC0E1530;
         if (!b.enabled) fill = 0x660E1530;
@@ -360,13 +422,20 @@ public final class UIManager {
         float ly = Math.max(H * 0.2f, 230);
         float bob = MathUtil.sin(g.realTime * 2f) * 6f;
         // logo emblem
-        Shapes.draw(gfx, Shapes.SQUARE, W / 2 - 150, ly - 120 + bob, 26, g.realTime, 0xFFFF3D6E);
-        Shapes.draw(gfx, Shapes.TRIANGLE, W / 2 + 150, ly - 120 - bob, 26, -g.realTime, 0xFFFFB300);
-        gfx.circle(W / 2, ly - 125, 34, 0x3340C4FF);
-        gfx.circle(W / 2, ly - 125, 24, 0xFF40C4FF);
-        gfx.circle(W / 2, ly - 125, 15, 0xFFFFFFFF);
-        neonText(gfx, "BLOCK", W / 2, ly, 104, NEON);
-        neonText(gfx, "KILLERS", W / 2, ly + 100, 104, PINK);
+        // crosshair over a zombie head emblem
+        logoZ.x = W / 2; logoZ.y = ly - 125 + bob; logoZ.vx = 0; logoZ.vy = 1; logoZ.t = g.realTime;
+        Zombies.drawTop(gfx, logoZ, 40);
+        gfx.ring(W / 2, ly - 125, 58, 4, 0xCCE53935);
+        gfx.line(W / 2 - 78, ly - 125, W / 2 - 40, ly - 125, 4, 0xCCE53935); gfx.line(W / 2 + 40, ly - 125, W / 2 + 78, ly - 125, 4, 0xCCE53935);
+        gfx.line(W / 2, ly - 203, W / 2, ly - 165, 4, 0xCCE53935); gfx.line(W / 2, ly - 85, W / 2, ly - 47, 4, 0xCCE53935);
+        neonText(gfx, "ZOMBIE", W / 2, ly, 104, 0xFF8BC34A);
+        neonText(gfx, "KILLER", W / 2, ly + 100, 104, 0xFFE53935);
+        // blood drips under the logo
+        for (int k = 0; k < 7; k++) {
+            float dx = W / 2 - 230 + k * 76 + (k * 37 % 20), len = 18 + (k * 53 % 40) + 8 * MathUtil.sin(g.realTime * 1.5f + k);
+            gfx.rect(dx - 3, ly + 108, dx + 3, ly + 108 + len, 0xFFB71C1C);
+            gfx.circle(dx, ly + 108 + len, 5, 0xFFB71C1C);
+        }
         gfx.text(s("tagline"), W / 2, ly + 172, 26, 0xFFB0BEC5, Gfx.ALIGN_CENTER, false);
         gfx.text(s("best_score") + ": " + g.save.bestScore, W / 2, ly + 232, 34, GOLD, Gfx.ALIGN_CENTER, true);
         menuB.get(3).enabled = g.platform.canExit();
@@ -374,7 +443,7 @@ public final class UIManager {
         gfx.text("v1.0", W / 2, H - 30, 20, 0x66FFFFFF, Gfx.ALIGN_CENTER, false);
     }
 
-    private void bar(Gfx gfx, float l, float t, float r, float b, float k, int col, int back) {
+    void bar(Gfx gfx, float l, float t, float r, float b, float k, int col, int back) {
         gfx.roundRect(l, t, r, b, (b - t) / 2, back);
         if (k > 0) gfx.roundRect(l, t, l + Math.max(b - t, (r - l) * MathUtil.clamp(k, 0, 1)), b, (b - t) / 2, col);
     }
@@ -462,8 +531,73 @@ public final class UIManager {
         }
     }
 
+    // ------------------------------------------------------------------ HUD layout editor
+    private int layoutSel, dragPointer = -1;
+    private float dragX, dragY;
+    private static final int[] HUD_EL = {HudLayout.PAUSE, HudLayout.NOVA, HudLayout.MINIMAP, HudLayout.PICKUP,
+            HudLayout.HOTBAR, HudLayout.HOTBAR, HudLayout.HOTBAR, HudLayout.HOTBAR, HudLayout.HOTBAR};
+
+    /** Applies the user's saved offsets/scales to the HUD buttons, keeping them on screen. */
+    private void applyHudLayout(float W, float H) {
+        HudLayout L = g.layout;
+        if (L == null) return;
+        Button h0 = hudB.get(4), h4 = hudB.get(8);
+        float gx = (h0.l + h4.r) / 2, gy = (h0.t + h0.b) / 2;
+        for (int i = 0; i < hudB.size(); i++) {
+            Button b = hudB.get(i);
+            int el = HUD_EL[i];
+            if (el == HudLayout.HOTBAR) L.apply(b, el, gx, gy, W, H); else L.apply(b, el, b.cx(), b.cy(), W, H);
+        }
+        // keep every element on screen
+        for (int el = 0; el < HudLayout.COUNT; el++) {
+            float minL = 1e9f, maxR = -1e9f, minT = 1e9f, maxB = -1e9f;
+            for (int i = 0; i < hudB.size(); i++) if (HUD_EL[i] == el) { Button b = hudB.get(i); minL = Math.min(minL, b.l); maxR = Math.max(maxR, b.r); minT = Math.min(minT, b.t); maxB = Math.max(maxB, b.b); }
+            float sx = minL < 4 ? 4 - minL : (maxR > W - 4 ? W - 4 - maxR : 0), sy = minT < 4 ? 4 - minT : (maxB > H - 4 ? H - 4 - maxB : 0);
+            if (sx != 0 || sy != 0) { L.dx[el] += sx; L.dy[el] += sy; for (int i = 0; i < hudB.size(); i++) if (HUD_EL[i] == el) { Button b = hudB.get(i); b.set(b.l + sx, b.t + sy, b.r + sx, b.b + sy); } }
+        }
+    }
+
+    private int hudElementAt(float x, float y) {
+        for (int i = 0; i < hudB.size(); i++) if (hudB.get(i).hit(x, y)) return HUD_EL[i];
+        return -1;
+    }
+
+    private void renderLayoutEditor(Gfx gfx) {
+        float W = g.viewW, H = g.viewH;
+        renderMenuBackground(gfx);
+        dim(gfx, 0x99070B16);
+        neonText(gfx, s("edit_layout"), W / 2, 90, 44, 0xFF8BC34A);
+        gfx.text(s("lay_hint"), W / 2, 124, 18, 0xFFB0BEC5, Gfx.ALIGN_CENTER, false);
+        String[] names = {s("lay_hotbar"), s("nova"), s("pick_up"), s("pause"), s("map")};
+        for (int i = 0; i < hudB.size(); i++) {
+            Button b = hudB.get(i);
+            int el = HUD_EL[i];
+            boolean sel = el == layoutSel;
+            int c = sel ? 0xFF8BC34A : 0xFF18FFFF;
+            gfx.roundRect(b.l, b.t, b.r, b.b, 12, MathUtil.alpha(c, sel ? 0.35f : 0.18f));
+            gfx.strokeRoundRect(b.l, b.t, b.r, b.b, 12, sel ? 4 : 2, c);
+            if (el != HudLayout.HOTBAR || i == 4) gfx.text(names[el], el == HudLayout.HOTBAR ? b.l : b.cx(), b.t - 8, 18, c, el == HudLayout.HOTBAR ? Gfx.ALIGN_LEFT : Gfx.ALIGN_CENTER, true);
+        }
+        gfx.text(names[layoutSel] + "  ×" + String.format(java.util.Locale.US, "%.1f", g.layout.scale[layoutSel]), W / 2, layB.get(0).t - 18, 22, 0xFFFFFFFF, Gfx.ALIGN_CENTER, true);
+        for (Button b : layB) drawButton(gfx, b);
+    }
+
+    /** Split-screen shared top bar: pause, minimap, announcements. */
+    private void renderSplitTop(Gfx gfx) {
+        Button pb = hudB.get(0);
+        gfx.roundRect(pb.l, pb.t, pb.r, pb.b, 14, pb == pressed ? 0x66FFFFFF : 0x55000000);
+        gfx.rect(pb.cx() - 14, pb.t + 20, pb.cx() - 5, pb.b - 20, 0xFFFFFFFF);
+        gfx.rect(pb.cx() + 5, pb.t + 20, pb.cx() + 14, pb.b - 20, 0xFFFFFFFF);
+        if (annTimer > 0 && annTitle != null) {
+            float k = Math.min(1f, Math.min(annTimer, 2.6f - annTimer) * 3f);
+            neonText(gfx, annTitle, g.viewW / 2, g.viewH * 0.30f, 44, MathUtil.alpha(0xFFFFFFFF, k));
+            if (annSub != null) gfx.text(annSub, g.viewW / 2, g.viewH * 0.30f + 40, 24, MathUtil.alpha(GOLD, k), Gfx.ALIGN_CENTER, true);
+        }
+        if (!g.player.alive) renderDeath(gfx);
+    }
+
     /** Slow-motion death: desaturating overlay, cinematic bars and a big title. */
-    private void renderDeath(Gfx gfx) {
+    void renderDeath(Gfx gfx) {
         float W = g.viewW, H = g.viewH, t = g.deathSlowmo;
         float k = MathUtil.clamp(t / 0.8f, 0, 1);
         gfx.rect(0, 0, W, H, MathUtil.alpha(0xFF2A2A2A, 0.55f * k));
@@ -630,6 +764,8 @@ public final class UIManager {
                 String v;
                 if (b.action == A_QUALITY) v = s(st.quality == 0 ? "low" : (st.quality == 1 ? "medium" : "high"));
                 else if (b.action == A_BATTERY) v = s(st.batterySaver ? "battery_saver" : "fps60");
+                else if (b.action == A_VIEW) v = s(st.view3D ? "view_3d" : "view_2d");
+                else if (b.action == A_LAYOUT) v = s("edit");
                 else v = st.language == SettingsManager.LANG_FA ? "فارسی" : "English";
                 float tx = rtl ? cl + 110 : cr - 110;
                 gfx.roundRect(tx - 115, cy - 24, tx + 115, cy + 24, 12, b == pressed ? 0x66FFFFFF : 0x33FFD740);
@@ -673,7 +809,7 @@ public final class UIManager {
     }
 
     // ------------------------------------------------------------------ hotbar / minimap / loot / map
-    private void renderHotbar(Gfx gfx) {
+    void renderHotbar(Gfx gfx) {
         WeaponManager wm = g.weapons;
         for (int i = 0; i < Config.HOTBAR; i++) {
             Button b = hudB.get(4 + i);
@@ -699,7 +835,7 @@ public final class UIManager {
 
     private final float[] rr4 = new float[4];
 
-    private void renderMinimap(Gfx gfx) {
+    void renderMinimap(Gfx gfx) {
         Button mb = hudB.get(2);
         float R = 1800f;                                   // world radius shown
         float half = (mb.r - mb.l) / 2f, sc = half / R;
@@ -744,7 +880,7 @@ public final class UIManager {
             if (e.boss) gfx.circle(cx + dx * sc, cy + dy * sc, 6, g.bosses.color(e));
             else gfx.rect(cx + dx * sc - 1.2f, cy + dy * sc - 1.2f, cx + dx * sc + 1.2f, cy + dy * sc + 1.2f, e.tier > 0 ? 0xFFFF9100 : 0xFFFF5252);
         }
-        float a = p.facing;
+        float a = g.view3D() ? p.view : p.facing;
         float[] t = {cx + MathUtil.cos(a) * 8, cy + MathUtil.sin(a) * 8, cx + MathUtil.cos(a + 2.5f) * 6, cy + MathUtil.sin(a + 2.5f) * 6,
                 cx + MathUtil.cos(a - 2.5f) * 6, cy + MathUtil.sin(a - 2.5f) * 6};
         gfx.poly(t, 3, 0xFFFFFFFF);
@@ -935,7 +1071,7 @@ public final class UIManager {
         }
     }
 
-    private void coinIcon(Gfx gfx, float x, float y, float r) {
+    void coinIcon(Gfx gfx, float x, float y, float r) {
         gfx.circle(x, y, r, 0xFFFFC400);
         gfx.ring(x, y, r * 0.7f, Math.max(1.5f, r * 0.18f), 0xFFFF8F00);
         gfx.circle(x - r * 0.3f, y - r * 0.3f, r * 0.2f, 0xCCFFFFFF);

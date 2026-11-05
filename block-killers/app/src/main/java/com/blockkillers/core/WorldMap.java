@@ -252,6 +252,53 @@ public final class WorldMap {
         vel[1] = vy * (1 - w) + ty * sp * w;
     }
 
+    /** Index of the obstacle hit by the last {@link #raycast} (-1 = outer wall). */
+    public int rayHit;
+    /** Cosine of the angle between the ray and the surface normal at the last hit (for shading). */
+    public float rayShade;
+
+    /**
+     * Casts a ray (unit direction dx,dy) against obstacle circles and the outer walls.
+     * Walks the obstacle grid cell by cell (DDA) so long rays stay cheap. Returns the hit distance.
+     */
+    public float raycast(float x, float y, float dx, float dy, float maxD) {
+        // outer walls
+        float best = maxD;
+        rayHit = -1;
+        if (dx > 1e-5f) best = Math.min(best, (hw - x) / dx); else if (dx < -1e-5f) best = Math.min(best, (-hw - x) / dx);
+        if (dy > 1e-5f) best = Math.min(best, (hh - y) / dy); else if (dy < -1e-5f) best = Math.min(best, (-hh - y) / dy);
+        float wallBest = best;
+        rayShade = Math.abs((hw - Math.abs(x + dx * best)) < 1f ? dx : dy);
+        // DDA over the obstacle grid
+        int cx = ocell(x), cy = ocell(y);
+        int stepX = dx > 0 ? 1 : -1, stepY = dy > 0 ? 1 : -1;
+        float nextX = (-H + (cx + (dx > 0 ? 1 : 0)) * OCELL), nextY = (-H + (cy + (dy > 0 ? 1 : 0)) * OCELL);
+        float tMaxX = Math.abs(dx) < 1e-6f ? Float.MAX_VALUE : (nextX - x) / dx;
+        float tMaxY = Math.abs(dy) < 1e-6f ? Float.MAX_VALUE : (nextY - y) / dy;
+        float tDX = Math.abs(dx) < 1e-6f ? Float.MAX_VALUE : OCELL / Math.abs(dx), tDY = Math.abs(dy) < 1e-6f ? Float.MAX_VALUE : OCELL / Math.abs(dy);
+        float tCell = 0;
+        while (tCell < best && cx >= 0 && cy >= 0 && cx < OCOLS && cy < OCOLS) {
+            int c = cy * OCOLS + cx;
+            for (int k = cellStart[c]; k < cellStart[c + 1]; k++) {
+                int i = cellItems[k];
+                float ox2 = ox[i] - x, oy2 = oy[i] - y;
+                float tc = ox2 * dx + oy2 * dy;
+                if (tc < 0) continue;
+                float d2 = ox2 * ox2 + oy2 * oy2 - tc * tc, r2 = or[i] * or[i];
+                if (d2 > r2) continue;
+                float th = tc - (float) Math.sqrt(r2 - d2);
+                if (th > 0 && th < best) {
+                    best = th; rayHit = i;
+                    float hx = x + dx * th - ox[i], hy = y + dy * th - oy[i];
+                    rayShade = Math.abs((hx * dx + hy * dy) / or[i]);
+                }
+            }
+            if (tMaxX < tMaxY) { tCell = tMaxX; tMaxX += tDX; cx += stepX; } else { tCell = tMaxY; tMaxY += tDY; cy += stepY; }
+        }
+        if (rayHit < 0 && best == wallBest) rayShade = 0.6f;
+        return best;
+    }
+
     public void reveal(float x, float y, float radius) {
         int c0 = MathUtil.clamp((int) ((x - radius + H) / FOG_CELL), 0, FOG_COLS - 1), c1 = MathUtil.clamp((int) ((x + radius + H) / FOG_CELL), 0, FOG_COLS - 1);
         int r0 = MathUtil.clamp((int) ((y - radius + H) / FOG_CELL), 0, FOG_COLS - 1), r1 = MathUtil.clamp((int) ((y + radius + H) / FOG_CELL), 0, FOG_COLS - 1);

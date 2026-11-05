@@ -6,6 +6,8 @@ public final class Projectile {
     public int pierceLeft, color, weaponId, special, element, bounces;
     public boolean alive, returning, canSplit;
     public Weapon src;
+    /** Hero who fired it (PvP hits, kill credit). */
+    public Hero owner;
     /** Enemies already hit (piercing projectiles must not hit the same enemy twice). */
     public final Enemy[] hits = new Enemy[12];
     public int hitCount;

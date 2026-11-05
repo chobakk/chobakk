@@ -39,26 +39,46 @@ public final class EnemyManager {
     }
 
     /** A point just outside the visible screen around the player. */
-    public void offscreenPoint(float[] out) {
+    public void offscreenPoint(float[] out) { offscreenPoint(out, g.spawnFocus()); }
+
+    public void offscreenPoint(float[] out, Player focus) {
         float z = g.camera.zoom;
         float hw = g.viewW / 2f / z, hh = g.viewH / 2f / z;
         WorldMap m = g.map;
         if (m.corridor()) {
             // enemies arrive from the left and right ends of the lane
             float side = MathUtil.rand() < 0.5f ? -1 : 1;
-            float x = g.player.x + side * (hw + 60);
-            if (x < -m.hw + 40 || x > m.hw - 40) x = g.player.x - side * (hw + 60);
+            float x = focus.x + side * (hw + 60);
+            if (x < -m.hw + 40 || x > m.hw - 40) x = focus.x - side * (hw + 60);
             out[0] = m.clampX(x, 40); out[1] = MathUtil.rand(-m.hh * 0.5f, m.hh * 0.5f);
             return;
         }
         float r = MathUtil.len(hw, hh) + 60f;
         for (int tries = 0; tries < 6; tries++) {
             float a = MathUtil.rand(0, MathUtil.TAU);
-            float x = g.player.x + MathUtil.cos(a) * r, y = g.player.y + MathUtil.sin(a) * r;
+            float x = focus.x + MathUtil.cos(a) * r, y = focus.y + MathUtil.sin(a) * r;
             out[0] = m.clampX(x, 40); out[1] = m.clampY(y, 40);
             // accept if still off-screen after clamping to the world border
-            if (Math.abs(out[0] - g.player.x) > hw + 20 || Math.abs(out[1] - g.player.y) > hh + 20) return;
+            if (Math.abs(out[0] - focus.x) > hw + 20 || Math.abs(out[1] - focus.y) > hh + 20) return;
         }
+    }
+
+    /** Nearest enemy inside a view cone (first-person auto-fire). */
+    public Enemy nearestInCone(float x, float y, float maxRange, float heading, float halfAngle) {
+        Enemy best = null;
+        float bd = maxRange * maxRange;
+        float cosLim = MathUtil.cos(halfAngle), hx = MathUtil.cos(heading), hy = MathUtil.sin(heading);
+        for (int i = 0; i < list.size; i++) {
+            Enemy e = list.get(i);
+            if (!e.alive) continue;
+            float dx = e.x - x, dy = e.y - y, d2 = dx * dx + dy * dy;
+            if (d2 > bd) continue;
+            float d = (float) Math.sqrt(d2) + 0.001f;
+            float widen = Math.min(0.35f, e.radius / d);   // big/close targets are easier to hit
+            if ((dx * hx + dy * hy) / d < cosLim - widen) continue;
+            bd = d2; best = e;
+        }
+        return best;
     }
 
     public Enemy nearest(float x, float y, float maxRange) {
@@ -74,7 +94,6 @@ public final class EnemyManager {
     }
 
     public void update(float dt) {
-        Player p = g.player;
         SpatialGrid grid = g.grid;
         for (int i = 0; i < list.size; i++) {
             Enemy e = list.get(i);
@@ -138,15 +157,23 @@ public final class EnemyManager {
             e.x = g.map.clampX(e.x, e.radius);
             e.y = g.map.clampY(e.y, e.radius);
 
-            // contact damage
-            float rr = e.radius + p.radius - 4f;
-            if (e.attackTimer <= 0 && MathUtil.dist2(e.x, e.y, p.x, p.y) < rr * rr) {
-                g.combat.damagePlayer(e.damage);
-                e.attackTimer = e.boss ? 0.8f : e.type.attackCooldown;
+            // contact damage (any player touching it)
+            if (e.attackTimer <= 0) {
+                for (int h = 0; h < g.heroCount; h++) {
+                    Hero hh = g.heroes[h];
+                    if (!hh.canAct()) continue;
+                    Player p = hh.player;
+                    float rr = e.radius + p.radius - 4f;
+                    if (MathUtil.dist2(e.x, e.y, p.x, p.y) < rr * rr) {
+                        g.combat.damageHero(hh, e.damage, null);
+                        e.attackTimer = e.boss ? 0.8f : e.type.attackCooldown;
+                        break;
+                    }
+                }
             }
 
-            // despawn stragglers that fell far behind (keeps density near the player)
-            if (!e.boss && MathUtil.dist2(e.x, e.y, p.x, p.y) > 2200f * 2200f) e.alive = false;
+            // despawn stragglers that fell far behind (keeps density near the players)
+            if (!e.boss && g.nearestHeroDist2(e.x, e.y) > 2200f * 2200f) e.alive = false;
         }
     }
 

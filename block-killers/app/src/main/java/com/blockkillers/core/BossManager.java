@@ -50,7 +50,7 @@ public final class BossManager {
             for (int i = 0; i < g.enemies.list.size; i++) {
                 Enemy o = g.enemies.list.get(i);
                 if (o.boss) continue;
-                float d = MathUtil.dist2(o.x, o.y, g.player.x, g.player.y);
+                float d = g.nearestHeroDist2(o.x, o.y);
                 if (d > fd) { fd = d; far = o; }
             }
             if (far == null) return null;
@@ -84,7 +84,7 @@ public final class BossManager {
     }
 
     public void updateBoss(Enemy e, float dt) {
-        Player p = g.player;
+        Player p = g.nearestHero(e.x, e.y).player;
         float dx = p.x - e.x, dy = p.y - e.y, d = MathUtil.len(dx, dy) + 0.001f;
         float nx = dx / d, ny = dy / d;
         e.stateTimer -= dt;
@@ -188,9 +188,8 @@ public final class BossManager {
     public void onBossKilled(Enemy e) {
         g.bossesKilled++;
         g.bossScore += e.score;
-        g.xp.addXp(e.xp);
-        Player p = g.player;
-        p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.3f);
+        g.awardXp(e.xp, null);
+        for (int h = 0; h < g.heroCount; h++) { Player p = g.heroes[h].player; if (g.heroes[h].canAct()) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.3f); }
         int c = color(e);
         for (int i = 0; i < 4; i++) g.fx.ring(e.x, e.y, 120 + i * 90, i % 2 == 0 ? c : 0xFFFFFFFF, 0.5f + i * 0.2f);
         g.fx.burst(e.x, e.y, c, 60, 600, 12);

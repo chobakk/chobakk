@@ -16,6 +16,8 @@ public final class Weapon {
     // runtime state
     public float timer, angle, beamTime, beamTick, recoil;
     public int shots, kills;
+    /** Hero carrying this gun (for crits, kill credit and PvP). */
+    public Hero owner;
 
     public Weapon(WeaponType type) { this.type = type; this.element = type.element; }
 

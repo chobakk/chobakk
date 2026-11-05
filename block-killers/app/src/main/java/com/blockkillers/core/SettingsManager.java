@@ -8,6 +8,8 @@ public final class SettingsManager {
     private final Storage st;
     public float musicVolume, sfxVolume, sensitivity;
     public boolean vibration, screenShake, batterySaver, showDamageNumbers, memeSounds;
+    /** First-person 3D view instead of top-down 2D. */
+    public boolean view3D;
     public int quality, language;
 
     public SettingsManager(Storage st) { this.st = st; load(); }
@@ -21,6 +23,7 @@ public final class SettingsManager {
         batterySaver = st.getInt("set_battery", 0) == 1;
         showDamageNumbers = st.getInt("set_dmgnum", 1) == 1;
         memeSounds = st.getInt("set_meme", 1) == 1;
+        view3D = st.getInt("set_view3d", 0) == 1;
         quality = MathUtil.clamp(st.getInt("set_quality", Q_HIGH), 0, 2);
         language = MathUtil.clamp(st.getInt("set_lang", LANG_EN), 0, 1);
     }
@@ -34,6 +37,7 @@ public final class SettingsManager {
         st.putInt("set_battery", batterySaver ? 1 : 0);
         st.putInt("set_dmgnum", showDamageNumbers ? 1 : 0);
         st.putInt("set_meme", memeSounds ? 1 : 0);
+        st.putInt("set_view3d", view3D ? 1 : 0);
         st.putInt("set_quality", quality);
         st.putInt("set_lang", language);
         st.flush();

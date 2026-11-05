@@ -7,6 +7,8 @@ public final class AudioManager {
     private final float[] lastPlayed = new float[Sfx.COUNT];
     private float clock;
     private boolean musicOn;
+    /** Records sounds for network clients (set by Game). */
+    public NetEvents recorder;
 
     public AudioManager(Audio backend, SettingsManager settings) {
         this.backend = backend; this.settings = settings;
@@ -16,6 +18,7 @@ public final class AudioManager {
     public void tick(float dt) { clock += dt; }
 
     public void play(int sfx) {
+        if (recorder != null) recorder.sound(sfx);
         if (settings.sfxVolume <= 0.001f) return;
         if (clock - lastPlayed[sfx] < Sfx.MIN_GAP[sfx]) return;
         lastPlayed[sfx] = clock;

@@ -32,6 +32,7 @@ public final class Enemy {
     public float shield, maxShield, shieldFlash;
     public boolean armored;
     public Weapon lastHitBy;
+    public Hero lastHitHero;
 
     public void init(EnemyType t, float x, float y, float hpMult, float dmgMult, float spdMult) {
         type = t; alive = true; boss = false; bossKind = 0;
@@ -42,7 +43,7 @@ public final class Enemy {
         wobble = MathUtil.rand(0, MathUtil.TAU); spawnAnim = 0; bladeHitTimer = 0; lastChainId = -1;
         xp = t.xp; score = t.score;
         tier = 0; fuseShapeA = fuseShapeB = 0; fuseColor = t.color;
-        burnT = burnDps = poisonT = poisonDps = slowT = slowAmt = slagT = 0; lastHitBy = null;
+        burnT = burnDps = poisonT = poisonDps = slowT = slowAmt = slagT = 0; lastHitBy = null; lastHitHero = null;
         armored = t.id == 6 || t.id == 9;
         maxShield = shield = (t.id == 3 || t.id == 8 || t.id == 4) ? maxHp * 0.6f : 0; shieldFlash = 0;
     }

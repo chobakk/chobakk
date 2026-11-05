@@ -6,7 +6,7 @@ public final class EnemyAI {
     public EnemyAI(Game g) { this.g = g; }
 
     public void update(Enemy e, float dt) {
-        Player p = g.player;
+        Player p = g.nearestHero(e.x, e.y).player;
         float dx = p.x - e.x, dy = p.y - e.y;
         float d = MathUtil.len(dx, dy) + 0.0001f;
         float nx = dx / d, ny = dy / d;

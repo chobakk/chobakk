@@ -12,6 +12,8 @@ public final class XpManager {
 
     public int needed() { return Config.xpToNext(g.player.level); }
 
+    public float progressOf(Player p) { return Math.min(1f, p.xp / (float) Config.xpToNext(p.level)); }
+
     public float progress() { return Math.min(1f, g.player.xp / (float) needed()); }
 
     public void addXp(float amount) {

@@ -51,6 +51,8 @@ public final class GameTests {
         testGunParts();
         testElementMatchups();
         testBulletInterception();
+        testMultiplayer();
+        testZombie3DAndLayout();
         testStrings();
         testScreenSizes();
         testPerformance();
@@ -67,7 +69,7 @@ public final class GameTests {
         h.tick(0.5f);
         h.tapButton(g.ui.menuButton(1));
         check("menu: Settings button opens settings", g.state == Game.S_SETTINGS, null);
-        h.tapButton(g.ui.settingsButton(10));
+        h.tapButton(g.ui.settingsButton(12));
         check("settings: Back returns to menu", g.state == Game.S_MENU, null);
         h.tapButton(g.ui.menuButton(2));
         check("menu: Statistics button opens stats", g.state == Game.S_STATS, null);
@@ -501,7 +503,7 @@ public final class GameTests {
         check("shop bonus applies to the run (+10 max HP)", h3.game.player.maxHp >= Config.PLAYER_MAX_HP + 10, "maxHp=" + h3.game.player.maxHp);
         // passive: every 20 kills = +2 HP
         Game g4 = h3.game; noWeapons(g4); g4.enemies.clear();
-        g4.player.hp = 50; g4.kills = 19;
+        g4.player.hp = 50; g4.kills = 19; g4.hero.enemyKills = 19;
         Enemy e = g4.enemies.spawn(Config.ENEMIES[0], g4.player.x + 300, g4.player.y);
         g4.grid.build(g4.enemies.list);
         g4.combat.damageEnemy(e, 1e6f, 0, 0, 0);
@@ -717,9 +719,253 @@ public final class GameTests {
         check("Pulse destroys enemy bullets", g.combat.bullets.size == 0, "left=" + g.combat.bullets.size);
     }
 
+
+    // ------------------------------------------------------------------ multiplayer
+    private interface Cond { boolean ok(); }
+    private static boolean pump(Harness a, Harness b, Cond c, int maxMs) {
+        long end = System.currentTimeMillis() + maxMs;
+        while (System.currentTimeMillis() < end) {
+            a.frame(); if (b != null) b.frame();
+            if (c.ok()) return true;
+            try { Thread.sleep(4); } catch (InterruptedException ignored) {}
+        }
+        return c.ok();
+    }
+
+    static void testMultiplayer() {
+        // ---- same phone, co-op
+        Harness h = fresh(); Game g = h.game; h.bot = false;
+        h.tapButton(g.ui.menuButton(6));
+        check("menu: Multiplayer button opens the multiplayer menu", g.state == Game.S_MPMENU, null);
+        g.mpm.startSplit(Game.M_COOP);
+        check("split screen: 2 local players in co-op", g.state == Game.S_PLAYING && g.heroCount == 2 && g.heroes[1].local && g.splitScreen, null);
+        float s = g.scale;
+        Player p0 = g.heroes[0].player, p1 = g.heroes[1].player;
+        float x0 = p0.x, x1 = p1.x;
+        g.touchDown(1, 120 * s, 900 * s); g.touchMove(1, 20 * s, 900 * s);      // left half -> P1 moves left
+        g.touchDown(2, 600 * s, 900 * s); g.touchMove(2, 700 * s, 900 * s);      // right half -> P2 moves right
+        h.tick(1f);
+        check("split screen: left half steers P1, right half steers P2", p0.x < x0 - 50 && p1.x > x1 + 50, "dx0=" + (int) (p0.x - x0) + " dx1=" + (int) (p1.x - x1));
+        g.touchUp(1, 0, 0); g.touchUp(2, 0, 0);
+        check("each player has its own hotbar and companion", g.heroes[1].weapons.activeWeapon() != null && g.heroes[1].pets.count == 1 && g.heroes[0].weapons != g.heroes[1].weapons, null);
+        UIManager.Button slot = null;
+        g.heroes[1].weapons.slots[2] = new Weapon(Config.WEAPONS[Config.W_RAILGUN]);
+        for (int i = 0; i < 3; i++) h.frame();
+        check("enemies spawn for co-op", g.enemies.aliveCount() >= 0, null);
+        // down + revive
+        g.heroes[1].player.x = p0.x + 40; g.heroes[1].player.y = p0.y;
+        g.combat.damageHero(g.heroes[1], 1e7f, null);
+        check("co-op: a killed player goes down (not game over)", g.heroes[1].downed && g.state == Game.S_PLAYING, null);
+        noWeaponsBoth(g);
+        g.enemies.clear();
+        h.tick(Config.REVIVE_TIME + 0.6f);
+        check("co-op: standing next to a downed teammate revives them", !g.heroes[1].downed && g.heroes[1].player.hp > 0, "progress=" + g.heroes[1].reviveProgress);
+        g.combat.damageHero(g.heroes[0], 1e7f, null);
+        g.heroes[1].player.invuln = 0;
+        g.combat.damageHero(g.heroes[1], 1e7f, null);
+        h.tick(3.5f);
+        check("co-op: everyone down -> match results", g.state == Game.S_MPRESULT, "state=" + g.state);
+        g.toMenu();
+        check("leaving returns to solo setup", g.heroCount == 1 && g.mode == Game.M_SOLO && !g.splitScreen && g.state == Game.S_MENU, null);
+
+        // ---- same phone, PvP
+        g.mpm.startSplit(Game.M_PVP);
+        check("PvP: no enemy waves", true, null);
+        h.tick(2f);
+        check("PvP: no enemies spawn", g.enemies.aliveCount() == 0, "enemies=" + g.enemies.aliveCount());
+        Hero a = g.heroes[0], b = g.heroes[1];
+        b.player.x = a.player.x + 200; b.player.y = a.player.y; b.player.invuln = 0;
+        float hp0 = b.player.hp;
+        g.bind(a);
+        g.combat.fireProjectile(a.player.x + 40, a.player.y, 0, 800, 50, 0, 0, 0, 400, 0xFFFFFFFF, 0, 6, WeaponType.SP_NONE, 0, 0, false, a.weapons.slots[0]);
+        g.bindLocal();
+        for (int i = 0; i < 20; i++) { g.grid.build(g.enemies.list); g.combat.update(1f / 60f); }
+        check("PvP: shots damage other players (scaled)", hp0 - b.player.hp > 10 && hp0 - b.player.hp < 25, "took " + (hp0 - b.player.hp));
+        b.player.invuln = 0;
+        g.combat.damageHero(b, 1e7f, a);
+        check("PvP: a kill scores for the killer", a.pvpKills == 1 && a.score >= Config.PVP_KILL_SCORE && b.deaths == 1 && b.downed, null);
+        h.tick(Config.PVP_RESPAWN + 0.3f);
+        check("PvP: the killed player respawns", !b.downed && b.player.hp == b.player.maxHp, null);
+        g.time = Config.PVP_MATCH - 0.1f;
+        h.tick(0.3f);
+        check("PvP: match ends on the clock with rankings", g.state == Game.S_MPRESULT && g.ui.rankedPlayers()[0] == a, "state=" + g.state);
+        g.toMenu();
+
+        // ---- PvPvE
+        g.mpm.startSplit(Game.M_PVPVE);
+        h.tick(8f);
+        check("PvPvE: enemies attack while players can fight", g.enemies.aliveCount() > 0 && g.pvp(), null);
+        g.toMenu();
+
+        // ---- Wi-Fi host + client over real sockets
+        Harness hh = fresh(), hc = fresh();
+        Game host = hh.game, cl = hc.game;
+        hh.bot = false; hc.bot = false;
+        host.save.playerName = "Hosty"; cl.save.playerName = "Guesty";
+        host.mpm.hostLan(0);
+        com.blockkillers.core.net.NetHost nh = (com.blockkillers.core.net.NetHost) host.net;
+        check("Wi-Fi: host opens a server socket", nh.ready && nh.port > 0, "port=" + nh.port);
+        cl.mpm.joinLan("127.0.0.1", nh.port);
+        boolean joined = pump(hh, hc, () -> host.mpm.lobbyCount == 2 && cl.mpm.myIndex == 1, 4000);
+        check("Wi-Fi: client joins the lobby", joined, "lobby=" + host.mpm.lobbyCount + " idx=" + cl.mpm.myIndex);
+        pump(hh, hc, () -> "Hosty".equals(cl.mpm.names[0]), 2000);
+        check("Wi-Fi: lobby names reach the client", "Hosty".equals(cl.mpm.names[0]) && "Guesty".equals(host.mpm.names[1]), null);
+        host.mpm.lobbyMode = Game.M_COOP;
+        host.mpm.hostStart();
+        boolean started = pump(hh, hc, () -> cl.state == Game.S_PLAYING && cl.heroCount == 2, 4000);
+        check("Wi-Fi: host starts -> client is in the match", started && host.state == Game.S_PLAYING, "client state=" + cl.state);
+        check("Wi-Fi: both build the same map", host.map.count == cl.map.count && host.map.chestCount == cl.map.chestCount && Math.abs(host.map.ox[5] - cl.map.ox[5]) < 0.01f, null);
+        host.godMode = true; host.heroes[1].player.invuln = 99;
+        pump(hh, hc, () -> cl.enemies.aliveCount() > 0, 8000);
+        check("Wi-Fi: client sees enemies from the host", cl.enemies.aliveCount() > 0, "client enemies=" + cl.enemies.aliveCount());
+        float rx = host.heroes[1].player.x;
+        cl.heroes[1].joystick.active = true; cl.heroes[1].joystick.outX = 1; cl.heroes[1].joystick.outY = 0;
+        pump(hh, hc, () -> host.heroes[1].player.x > rx + 120, 4000);
+        check("Wi-Fi: client joystick moves its player on the host", host.heroes[1].player.x > rx + 120, "dx=" + (int) (host.heroes[1].player.x - rx));
+        pump(hh, hc, () -> Math.abs(cl.heroes[1].player.x - host.heroes[1].player.x) < 60, 2000);
+        check("Wi-Fi: client sees its own position from the host", Math.abs(cl.heroes[1].player.x - host.heroes[1].player.x) < 60, null);
+        cl.heroes[1].joystick.outX = 0;
+        host.heroes[1].weapons.slots[3] = host.loot.roll(Config.W_SCATTER, Loot.EPIC, 2);
+        pump(hh, hc, () -> cl.heroes[1].weapons.slots[3] != null, 2000);
+        check("Wi-Fi: client hotbar mirrors the host", cl.heroes[1].weapons.slots[3] != null && cl.heroes[1].weapons.slots[3].rarity == Loot.EPIC, null);
+        cl.mpm.action(cl.heroes[1], com.blockkillers.core.net.NetSync.A_SLOT, 3);
+        pump(hh, hc, () -> host.heroes[1].weapons.active == 3, 2000);
+        check("Wi-Fi: client action (switch gun) applies on the host", host.heroes[1].weapons.active == 3, null);
+        host.heroes[1].xp.addXp(Config.xpToNext(host.heroes[1].player.level));
+        pump(hh, hc, () -> cl.heroes[1].cardsOpen && cl.heroes[1].upgrades.cardCount == 3, 3000);
+        check("Wi-Fi: client receives its level-up cards (game not paused)", cl.heroes[1].cardsOpen && host.state == Game.S_PLAYING, null);
+        int taken = host.heroes[1].player.upgradesTaken;
+        cl.mpm.action(cl.heroes[1], com.blockkillers.core.net.NetSync.A_CARD, 0);
+        pump(hh, hc, () -> host.heroes[1].player.upgradesTaken == taken + 1, 2000);
+        check("Wi-Fi: client card choice applies on the host", host.heroes[1].player.upgradesTaken == taken + 1, null);
+        int snap = com.blockkillers.core.net.NetSync.snapshot(host, host.heroes[1]).length;
+        // stress: full horde
+        for (int i = 0; i < 360; i++) host.enemies.spawn(Config.ENEMIES[i % 9], MathUtil.rand(-900, 900), MathUtil.rand(-900, 900));
+        int big = com.blockkillers.core.net.NetSync.snapshot(host, host.heroes[1]).length;
+        check("Wi-Fi: snapshots stay compact", big < 40000, "normal " + snap + " B, full horde " + big + " B");
+        cl.mpm.leave();
+        pump(hh, null, () -> !host.heroes[1].active, 3000);
+        check("Wi-Fi: host notices a player leaving", !host.heroes[1].active && host.state == Game.S_PLAYING, null);
+        host.toMenu();
+
+        // ---- Online via the relay server
+        com.blockkillers.core.net.RelayServer relay = new com.blockkillers.core.net.RelayServer();
+        try { relay.start(0); } catch (Exception e) { check("relay starts", false, e.toString()); return; }
+        Harness oh = fresh(), oc = fresh();
+        oh.bot = false; oc.bot = false;
+        oh.game.mpm.hostOnline("127.0.0.1", relay.port());
+        com.blockkillers.core.net.NetHost rh = (com.blockkillers.core.net.NetHost) oh.game.net;
+        pump(oh, null, () -> rh.roomCode != null, 4000);
+        check("online: host gets a 4-letter room code from the relay", rh.roomCode != null && rh.roomCode.length() == 4, "code=" + rh.roomCode);
+        oc.game.mpm.joinOnline("127.0.0.1", relay.port(), rh.roomCode == null ? "XXXX" : rh.roomCode.toLowerCase());
+        pump(oh, oc, () -> oh.game.mpm.lobbyCount == 2 && oc.game.mpm.myIndex == 1, 4000);
+        check("online: client joins with the room code", oh.game.mpm.lobbyCount == 2, null);
+        oh.game.mpm.lobbyMode = Game.M_PVPVE;
+        oh.game.mpm.hostStart();
+        pump(oh, oc, () -> oc.game.state == Game.S_PLAYING && oc.game.mode == Game.M_PVPVE, 4000);
+        check("online: PvPvE match starts on both devices", oc.game.state == Game.S_PLAYING && oc.game.mode == Game.M_PVPVE, null);
+        oh.game.godMode = true;
+        pump(oh, oc, () -> oc.game.enemies.aliveCount() > 0, 9000);
+        check("online: snapshots flow through the relay", oc.game.enemies.aliveCount() > 0 && oc.game.heroCount == 2, null);
+        Harness bad = fresh();
+        bad.game.mpm.joinOnline("127.0.0.1", relay.port(), "ZZZZ");
+        pump(bad, null, () -> bad.game.state == Game.S_MENU, 3000);
+        check("online: wrong room code fails cleanly", bad.game.state == Game.S_MENU && bad.game.mpm.lastError != null, "err=" + bad.game.mpm.lastError);
+        oh.game.toMenu(); oc.game.toMenu();
+        relay.stop();
+
+        // ---- discovery beacon (loopback)
+        Harness dh = fresh(), dc = fresh();
+        dh.game.mpm.hostLan(0);
+        dc.game.mpm.startDiscovery();
+        boolean seen = pump(dh, dc, () -> !dc.game.mpm.discovery.list().isEmpty(), 3500);
+        report.add("INFO  Wi-Fi discovery beacon received on loopback: " + seen + " (real phones use the Wi-Fi broadcast address)");
+        System.out.println(report.get(report.size() - 1));
+        dh.game.toMenu(); dc.game.mpm.discovery.stop();
+    }
+    private static void noWeaponsBoth(Game g) { for (int h = 0; h < g.heroCount; h++) { for (int i = 0; i < Config.HOTBAR; i++) g.heroes[h].weapons.slots[i] = null; g.heroes[h].pets.count = 0; } }
+
+
+    static void testZombie3DAndLayout() {
+        Harness h = fresh(); Game g = h.game; h.bot = false;
+        check("game is now Zombie Killer", g.strings.get("e_block").equals("Walker") && g.strings.get("boss_monolith").equals("THE ABOMINATION"), null);
+        // settings: view mode
+        h.tapButton(g.ui.menuButton(1));
+        h.tapButton(g.ui.settingsButton(10));
+        check("settings: View switches to 3D first person", g.settings.view3D, null);
+        h.tapButton(g.ui.settingsButton(12));
+        g.startRun(WorldMap.OPEN); g.godMode = true;
+        check("3D mode active in a solo run", g.view3D(), null);
+        // raycast against a pillar
+        WorldMap m = g.map;
+        int o = 0; for (int i = 0; i < m.count; i++) if (m.or[i] > 40) { o = i; break; }
+        float d = m.raycast(m.ox[o] - 300, m.oy[o], 1, 0, 2000);
+        check("3D ray casting hits pillars at the right distance", Math.abs(d - (300 - m.or[o])) < 1f && m.rayHit == o, "d=" + d);
+        // render a 3D frame with zombies, bosses, loot, chests, projectiles
+        for (int i = 0; i < 11; i++) { Enemy e = g.enemies.spawn(Config.ENEMIES[i], g.player.x + 200 + i * 40, g.player.y + (i % 3 - 1) * 60); if (e != null && i % 4 == 0) g.enemies.fuse(e, 1 + i % 2); }
+        g.bosses.spawnBoss();
+        g.loot.drop(g.player.x + 150, g.player.y, g.loot.roll(Config.W_RAILGUN, Loot.LEGENDARY, 3));
+        h.tick(0.5f);
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1080, 2400, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D gr = img.createGraphics();
+        boolean ok = true;
+        try { for (int i = 0; i < 3; i++) g.render(new DesktopGfx(gr, 1080, 2400)); } catch (Exception e) { ok = false; e.printStackTrace(); }
+        check("3D frame renders (walls, zombies, bosses, loot, gun in hand)", ok, null);
+        // look + move relative to view
+        float s = g.scale;
+        float v0 = g.player.view;
+        g.touchDown(5, 800 * s, 900 * s); g.touchMove(5, 900 * s, 900 * s); g.touchUp(5, 0, 0);
+        check("3D: dragging the right half turns the view", g.player.view > v0 + 0.5f, "view=" + g.player.view);
+        g.enemies.clear(); g.combat.clear(); noWeapons(g);
+        g.player.view = MathUtil.PI / 2;   // look "down" the world y axis
+        float y0 = g.player.y, x0 = g.player.x;
+        g.touchDown(6, 150 * s, 1100 * s); g.touchMove(6, 150 * s, 1000 * s);   // push the stick up = forward
+        h.tick(0.8f);
+        g.touchUp(6, 0, 0);
+        check("3D: stick forward moves along the view direction", g.player.y > y0 + 80 && Math.abs(g.player.x - x0) < 40, "dy=" + (int) (g.player.y - y0));
+        // crosshair cone targeting
+        g.weapons.slots[0] = new Weapon(Config.WEAPONS[0]); g.weapons.active = 0; g.weapons.slots[0].owner = g.hero;
+        g.player.view = 0;
+        Enemy behind = g.enemies.spawn(Config.ENEMIES[9], g.player.x - 150, g.player.y);
+        h.tick(1f);
+        check("3D: auto-fire ignores zombies outside the crosshair", behind.hp == behind.maxHp, null);
+        Enemy ahead = g.enemies.spawn(Config.ENEMIES[9], g.player.x + 250, g.player.y);
+        h.tick(1.5f);
+        check("3D: auto-fire hits zombies in the crosshair", ahead.hp < ahead.maxHp || !ahead.alive, null);
+        g.settings.view3D = false;
+        // layout editor
+        DesktopPlatform.MemStorage st = new DesktopPlatform.MemStorage();
+        Harness hl = new Harness(st, 1080, 2400); Game gl = hl.game;
+        hl.tapButton(gl.ui.menuButton(1));
+        hl.tapButton(gl.ui.settingsButton(11));
+        check("settings: Edit control layout opens the editor", gl.state == Game.S_LAYOUT, null);
+        UIManager.Button nova = gl.ui.hudButton(1);
+        float nx = nova.cx(), ny = nova.cy(), sc = gl.scale;
+        gl.touchDown(1, nx * sc, ny * sc); gl.touchMove(1, (nx - 200) * sc, (ny - 300) * sc); gl.touchUp(1, 0, 0);
+        check("layout editor: drag moves a control", Math.abs(gl.ui.hudButton(1).cx() - (nx - 200)) < 2 && Math.abs(gl.ui.hudButton(1).cy() - (ny - 300)) < 2, null);
+        float w0 = gl.ui.hudButton(4).r - gl.ui.hudButton(4).l;
+        UIManager.Button slot = gl.ui.hudButton(4);
+        gl.touchDown(2, slot.cx() * sc, slot.cy() * sc); gl.touchUp(2, slot.cx() * sc, slot.cy() * sc);
+        hl.tapButton(gl.ui.layoutButton(1)); hl.tapButton(gl.ui.layoutButton(1));
+        check("layout editor: + makes the hotbar bigger", gl.ui.hudButton(4).r - gl.ui.hudButton(4).l > w0 * 1.15f, null);
+        hl.tapButton(gl.ui.layoutButton(3));
+        check("layout editor: Done returns to settings", gl.state == Game.S_SETTINGS, null);
+        Harness h2 = new Harness(st.reopen(), 1080, 2400);
+        check("custom layout persists after restart", Math.abs(h2.game.ui.hudButton(1).cx() - (nx - 200)) < 2, null);
+        h2.game.layout.reset(); h2.game.ui.layout();
+        check("layout reset restores defaults", Math.abs(h2.game.ui.hudButton(1).cx() - nx) < 2, null);
+        // all zombie designs render in 2D
+        Harness hz = fresh(); Game gz = hz.game; gz.startRun(); gz.godMode = true;
+        for (int i = 0; i < 11; i++) { Enemy e = gz.enemies.spawn(Config.ENEMIES[i], gz.player.x + (i - 5) * 50, gz.player.y - 200); if (e != null && i > 5) gz.enemies.fuse(e, i % 2 + 1); }
+        for (int k = 0; k < 3; k++) { gz.bosses.spawned = k; Enemy b = gz.bosses.spawnBoss(); if (b != null) { b.x = gz.player.x + (k - 1) * 220; b.y = gz.player.y + 250; } }
+        boolean ok2 = true;
+        try { gz.render(new DesktopGfx(gr, 1080, 2400)); } catch (Exception e) { ok2 = false; e.printStackTrace(); }
+        check("all 11 zombie types, mutated tiers and 3 boss zombies render", ok2, null);
+    }
+
     private static float totalHp(Game g) {
         float s = 0;
-        for (int i = 0; i < g.enemies.list.size; i++) if (g.enemies.list.get(i).alive) s += g.enemies.list.get(i).hp;
+        for (int i = 0; i < g.enemies.list.size; i++) if (g.enemies.list.get(i).alive) s += g.enemies.list.get(i).hp + g.enemies.list.get(i).shield;
         return s;
     }
 
@@ -908,7 +1154,7 @@ public final class GameTests {
         h.tapButton(g.ui.settingsButton(6)); // graphics cycle
         h.tapButton(g.ui.settingsButton(7)); // battery
         h.tapButton(g.ui.settingsButton(8)); // language
-        h.tapButton(g.ui.settingsButton(10)); // back
+        h.tapButton(g.ui.settingsButton(12)); // back
         SettingsManager re = new SettingsManager(st.reopen());
         check("settings persist across restart", !re.vibration && !re.screenShake && re.quality == 0 && re.batterySaver && re.language == 1 && re.musicVolume < 0.01f,
                 "vib=" + re.vibration + " shake=" + re.screenShake + " q=" + re.quality + " bat=" + re.batterySaver + " lang=" + re.language);
@@ -920,7 +1166,7 @@ public final class GameTests {
         g.pause();
         h.tapButton(g.ui.pauseButton(2));
         check("pause -> settings", g.state == Game.S_SETTINGS, null);
-        h.tapButton(g.ui.settingsButton(10));
+        h.tapButton(g.ui.settingsButton(12));
         check("settings -> back to pause", g.state == Game.S_PAUSED, null);
         // sfx muted -> no sounds played
         g.settings.sfxVolume = 0;
@@ -1021,7 +1267,7 @@ public final class GameTests {
             ArrayList<UIManager.Button> all = new ArrayList<>();
             for (int i = 0; i < 6; i++) all.add(g.ui.menuButton(i));
             boolean fit = inside(all, g.viewW, H) && noOverlap(all);
-            all.clear(); for (int i = 0; i < 11; i++) all.add(g.ui.settingsButton(i));
+            all.clear(); for (int i = 0; i < 13; i++) all.add(g.ui.settingsButton(i));
             fit &= inside(all, g.viewW, H) && noOverlap(all);
             all.clear(); for (int i = 0; i <= WorldMap.MODES; i++) all.add(g.ui.mapSelectButton(i));
             fit &= inside(all, g.viewW, H) && noOverlap(all);

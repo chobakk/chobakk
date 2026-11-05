@@ -20,6 +20,16 @@ public final class DesktopPlatform implements Platform {
     @Override public void vibrate(int ms) { vibrations++; }
     @Override public boolean canExit() { return true; }
     @Override public void exitApp() { }
+    /** Tests queue answers for text prompts here. */
+    public final java.util.ArrayDeque<String> promptAnswers = new java.util.ArrayDeque<>();
+    public String lastPromptTitle;
+    @Override public void promptText(String title, String initial, TextCallback cb) {
+        lastPromptTitle = title;
+        String a = promptAnswers.poll();
+        if (a != null) cb.done(a);
+    }
+    public boolean networkActive;
+    @Override public void setNetworkActive(boolean active) { networkActive = active; }
 
     public static final class MemStorage implements Storage {
         public final HashMap<String, Object> committed = new HashMap<>();

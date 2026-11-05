@@ -9,6 +9,7 @@ public final class WeaponManager {
     private final Game g;
     public final Weapon[] slots = new Weapon[Config.HOTBAR];
     public int active;
+    public Hero owner;
     public float switchTimer;
     private final int[] hits = new int[256];
     private int chainId;
@@ -18,6 +19,7 @@ public final class WeaponManager {
     public void reset() {
         for (int i = 0; i < slots.length; i++) slots[i] = null;
         slots[0] = new Weapon(Config.WEAPONS[Config.W_BLASTER]);
+        slots[0].owner = owner;
         active = 0; switchTimer = 0;
     }
 
@@ -37,18 +39,20 @@ public final class WeaponManager {
         if (s < 0) return;
         Weapon w = new Weapon(Config.WEAPONS[typeId]);
         w.itemLevel = g.loot.itemLevel();
+        w.owner = owner;
         slots[s] = w;
     }
 
     public int addInstance(Weapon w) {
         int s = firstFree();
-        if (s >= 0) slots[s] = w;
+        if (s >= 0) { slots[s] = w; w.owner = owner; }
         return s;
     }
 
     /** Puts a gun into a slot (replacing what was there). */
     public void place(int slot, Weapon w) {
         slots[slot] = w;
+        w.owner = owner;
         w.timer = 0.15f;
         if (slot == active) switchTimer = Config.SWITCH_DELAY;
     }
@@ -85,6 +89,7 @@ public final class WeaponManager {
 
     /** Nearest enemy, but focus the boss when it is in range and nothing is dangerously close. */
     private Enemy pickTarget(Player p, float range) {
+        if (g.view3D() && owner != null && owner.local) return g.enemies.nearestInCone(p.x, p.y, range, p.view, 0.3f);
         Enemy n = g.enemies.nearest(p.x, p.y, range);
         Enemy b = g.bosses.current;
         if (b != null && b.alive && n != b) {

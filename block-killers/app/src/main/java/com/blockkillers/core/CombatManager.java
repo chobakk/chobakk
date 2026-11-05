@@ -12,6 +12,8 @@ public final class CombatManager {
     // deferred explosions (from Volatile kills) so nested grid queries never clash
     private final float[] pendX = new float[64], pendY = new float[64], pendR = new float[64], pendD = new float[64];
     private final int[] pendC = new int[64];
+    /** Hero credited for damage during projectile processing. */
+    private Hero attacker;
     private int pendN;
 
     public CombatManager(Game g) { this.g = g; }
@@ -35,6 +37,7 @@ public final class CombatManager {
         p.damage = damage; p.critChance = crit; p.pierceLeft = pierce; p.explodeRadius = explode; p.color = color;
         p.weaponId = weaponId; p.radius = radius; p.alive = true; p.hitCount = 0; p.special = special; p.element = element;
         p.bounces = bounces; p.canSplit = canSplit; p.src = src; p.age = 0; p.returning = false;
+        p.owner = src != null && src.owner != null ? src.owner : g.hero;
         if (special == WeaponType.SP_BOOMERANG) p.critChance = crit;
         // boomerang turn time is stored in explodeRadius-free field: use range/speed
         if (special == WeaponType.SP_BOOMERANG) p.bounces = (int) (range / Math.max(1f, speed) * 1000); // turn time in ms
@@ -50,9 +53,10 @@ public final class CombatManager {
     public void update(float dt) {
         EntityList<Enemy> enemies = g.enemies.list;
         WorldMap map = g.map;
-        Player pl = g.player;
         for (int i = projectiles.size - 1; i >= 0; i--) {
             Projectile p = projectiles.get(i);
+            Player pl = p.owner != null ? p.owner.player : g.player;
+            attacker = p.owner;
             p.age += dt;
             p.life -= dt;
             switch (p.special) {
@@ -109,9 +113,11 @@ public final class CombatManager {
                     else p.alive = false;
                 }
             }
+            if (p.alive && g.pvp() && p.special != WeaponType.SP_MINE) hitHeroes(p);
             if (p.life <= 0 && p.alive && p.explodeRadius > 0) { explode(p.x, p.y, p.explodeRadius, p.damage, p.critChance, p.color, p.src); p.alive = false; }
             if (p.life <= 0 || !p.alive) projectiles.removeAt(i);
         }
+        attacker = null;
 
         interceptBullets();
         for (int i = bullets.size - 1; i >= 0; i--) {
@@ -119,11 +125,16 @@ public final class CombatManager {
             b.life -= dt;
             b.x += b.vx * dt; b.y += b.vy * dt;
             if (map.blocked(b.x, b.y, b.radius * 0.5f) || map.outside(b.x, b.y, 30)) { g.fx.burst(b.x, b.y, b.color, 3, 100f, 3f); b.life = 0; }
-            float rr = b.radius + pl.radius - 4f;
-            if (b.life > 0 && MathUtil.dist2(b.x, b.y, pl.x, pl.y) < rr * rr) {
-                damagePlayer(b.damage);
-                g.fx.burst(b.x, b.y, b.color, 6, 120f, 4f);
-                b.life = 0;
+            for (int h = 0; h < g.heroCount && b.life > 0; h++) {
+                Hero hh = g.heroes[h];
+                if (!hh.canAct()) continue;
+                Player pl = hh.player;
+                float rr = b.radius + pl.radius - 4f;
+                if (MathUtil.dist2(b.x, b.y, pl.x, pl.y) < rr * rr) {
+                    damageHero(hh, b.damage, null);
+                    g.fx.burst(b.x, b.y, b.color, 6, 120f, 4f);
+                    b.life = 0;
+                }
             }
             if (b.life <= 0) bullets.removeAt(i);
         }
@@ -243,7 +254,9 @@ public final class CombatManager {
      */
     public boolean damageEnemy(Enemy e, float dmg, float extraCrit, float kbx, float kby, Weapon src) {
         if (!e.alive) return false;
-        Player p = g.player;
+        Hero atk = attacker != null ? attacker : (src != null && src.owner != null ? src.owner : g.hero);
+        Player p = atk.player;
+        e.lastHitHero = atk;
         int element = src == null ? Loot.E_NONE : src.element;
         boolean crit = MathUtil.rand() < p.critChance + extraCrit;
         if (crit) dmg *= p.critMult;
@@ -313,25 +326,28 @@ public final class CombatManager {
         if (src != null) {
             src.kills++;
             if (src.trait == Loot.T_VAMPIRIC) {
-                Player p = g.player;
+                Player p = src.owner != null ? src.owner.player : g.player;
                 p.hp = Math.min(p.maxHp, p.hp + 1.5f);
             } else if (src.trait == Loot.T_VOLATILE && pendN < pendX.length) {
-                pendX[pendN] = e.x; pendY[pendN] = e.y; pendR[pendN] = 70 + e.radius; pendD[pendN] = src.damage(g.player) * 0.5f; pendC[pendN] = Loot.COLORS[Loot.LEGENDARY]; pendN++;
+                pendX[pendN] = e.x; pendY[pendN] = e.y; pendR[pendN] = 70 + e.radius; pendD[pendN] = src.damage(src.owner != null ? src.owner.player : g.player) * 0.5f; pendC[pendN] = Loot.COLORS[Loot.LEGENDARY]; pendN++;
             }
         }
         if (e.boss) { g.bosses.onBossKilled(e); return; }
+        Hero killer = e.lastHitHero != null && e.lastHitHero.active ? e.lastHitHero : g.hero;
         g.kills++;
         g.killsByType[e.type.id]++;
-        g.addCoins(0.3f * (1 + e.tier * 3));
+        killer.enemyKills++;
+        killer.score += e.score;
+        g.addCoins(killer, 0.3f * (1 + e.tier * 3));
         g.meme.onKill(e);
-        if (g.kills % Config.PASSIVE_KILLS == 0) {
+        if (killer.enemyKills % Config.PASSIVE_KILLS == 0) {
             // passive: every 20 kills restores 2 HP
-            Player pp = g.player;
+            Player pp = killer.player;
             pp.hp = Math.min(pp.maxHp, pp.hp + Config.PASSIVE_HEAL);
             g.fx.text(pp.x, pp.y - pp.radius - 20, "+" + (int) Config.PASSIVE_HEAL + " HP", 0xFF00E676, 24f);
         }
         g.killScore += e.score;
-        g.xp.addXp(e.xp);
+        g.awardXp(e.xp, killer);
         g.loot.onEnemyKilled(e);
         g.fx.burst(e.x, e.y, e.fuseColor, 14 + e.tier * 8, 260f, e.radius * 0.45f);
         if (e.tier > 0) g.fx.burst(e.x, e.y, e.type.color, 10, 220f, e.radius * 0.35f);
@@ -381,9 +397,15 @@ public final class CombatManager {
         return n;
     }
 
-    public void damagePlayer(float dmg) {
-        Player p = g.player;
-        if (!p.alive || p.invuln > 0 || g.godMode) return;
+    public void damagePlayer(float dmg) { damageHero(g.hero, dmg, null); }
+
+    /** Damage to a player from an enemy (attacker == null) or another player (PvP). */
+    public void damageHero(Hero h, float dmg, Hero attackerHero) {
+        Player p = h.player;
+        if (!p.alive || h.downed || p.invuln > 0 || (g.godMode && h.local)) return;
+        Hero prev = g.hero;
+        g.bind(h);
+        h.lastAttacker = attackerHero;
         float reduced = dmg * (1f - p.armor / (p.armor + Config.ARMOR_K));
         p.hp -= reduced;
         p.invuln = Config.PLAYER_INVULN;
@@ -394,6 +416,24 @@ public final class CombatManager {
         g.fx.burst(p.x, p.y, 0xFFFF5252, 10, 220f, 5f);
         g.fx.text(p.x, p.y - 30, "-" + Math.max(1, Math.round(reduced)), 0xFFFF5252, 24f);
         if (p.hp <= 0) { p.hp = 0; g.onPlayerDeath(); }
+        g.bind(prev);
+    }
+
+    /** PvP: a player's shot hits another player. */
+    private void hitHeroes(Projectile p) {
+        for (int h = 0; h < g.heroCount; h++) {
+            Hero hh = g.heroes[h];
+            if (hh == p.owner || !hh.canAct()) continue;
+            Player pl = hh.player;
+            float rr = p.radius + pl.radius;
+            if (MathUtil.dist2(p.x, p.y, pl.x, pl.y) < rr * rr) {
+                if (p.explodeRadius > 0) { explode(p.x, p.y, p.explodeRadius, p.damage, p.critChance, p.color, p.src); p.alive = false; }
+                damageHero(hh, p.damage * Config.PVP_DAMAGE, p.owner);
+                g.fx.burst(p.x, p.y, p.owner != null ? p.owner.color : p.color, 6, 160f, 4f);
+                if (p.pierceLeft > 0) p.pierceLeft--; else p.alive = false;
+                return;
+            }
+        }
     }
 
     /** Nova Burst ability: damages and repels everything nearby and erases hostile bullets. */

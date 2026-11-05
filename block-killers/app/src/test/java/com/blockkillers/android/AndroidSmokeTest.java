@@ -157,7 +157,7 @@ public class AndroidSmokeTest {
         g.settings.language = 1;
         snapshot(v, "06-settings-fa");
         g.settings.language = 0;
-        tapButton(g, v, g.ui.settingsButton(10));
+        tapButton(g, v, g.ui.settingsButton(12));
         assertEquals(Game.S_PAUSED, g.state);
         tapButton(g, v, g.ui.pauseButton(0));
 

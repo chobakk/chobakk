@@ -24,6 +24,13 @@ public final class Config {
     public static final int PASSIVE_KILLS = 20;
     public static final float PASSIVE_HEAL = 2f;
 
+    // ---------- Multiplayer ----------
+    /** Player-vs-player damage multiplier (keeps duels from being instant). */
+    public static final float PVP_DAMAGE = 0.35f;
+    public static final float REVIVE_TIME = 3f, REVIVE_RANGE = 90f, PVP_RESPAWN = 3f, PVPVE_RESPAWN = 5f;
+    public static final float PVP_MATCH = 300f, PVPVE_MATCH = 480f;
+    public static final int PVP_KILL_SCORE = 500;
+
     // ---------- Ability: Nova Burst ----------
     public static final float NOVA_COOLDOWN = 14f;
     public static final float NOVA_RADIUS = 230f;

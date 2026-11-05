@@ -3,7 +3,11 @@ package com.blockkillers.android;
 import android.app.Activity;
 import android.content.Context;
 import android.os.Build;
+import android.app.AlertDialog;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.text.InputType;
+import android.widget.EditText;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.view.View;
@@ -83,6 +87,42 @@ public final class MainActivity extends Activity implements Platform {
     @Override public Audio audio() { return audio; }
     @Override public boolean canExit() { return true; }
     @Override public void exitApp() { game.onHostPause(); finish(); }
+
+    @Override public void promptText(final String title, final String initial, final TextCallback cb) {
+        runOnUiThread(() -> {
+            final EditText input = new EditText(this);
+            input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+            input.setText(initial);
+            input.setSelectAllOnFocus(true);
+            new AlertDialog.Builder(this)
+                    .setTitle(title)
+                    .setView(input)
+                    .setPositiveButton(android.R.string.ok, (d, w) -> {
+                        final String text = input.getText().toString().trim();
+                        // deliver on the next frame (game thread == UI thread here)
+                        view.post(() -> cb.done(text));
+                        hideSystemUi();
+                    })
+                    .setNegativeButton(android.R.string.cancel, (d, w) -> hideSystemUi())
+                    .show();
+        });
+    }
+
+    private WifiManager.MulticastLock multicastLock;
+
+    @Override public void setNetworkActive(boolean active) {
+        try {
+            if (active) {
+                if (multicastLock == null) {
+                    WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                    if (wm == null) return;
+                    multicastLock = wm.createMulticastLock("blockkillers-discovery");
+                    multicastLock.setReferenceCounted(false);
+                }
+                multicastLock.acquire();
+            } else if (multicastLock != null && multicastLock.isHeld()) multicastLock.release();
+        } catch (RuntimeException ignored) { }
+    }
 
     @SuppressWarnings("deprecation")
     @Override public void vibrate(int ms) {

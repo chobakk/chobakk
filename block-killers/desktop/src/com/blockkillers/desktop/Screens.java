@@ -101,6 +101,66 @@ public final class Screens {
         g.settings.language = SettingsManager.LANG_EN;
         lootAndMap(w, h);
         newScreens(w, h);
+        zombieScreens(w, h);
+    }
+
+    static void zombieScreens(int w, int h) throws Exception {
+        Harness hs = new Harness(new DesktopPlatform.MemStorage(), w, h);
+        Game g = hs.game;
+        hs.tick(1f);
+        save(g, w, h, "22-zombie-menu");
+        // 2D horde close-up
+        g.startRun(WorldMap.OPEN); g.godMode = true; hs.bot = false;
+        g.time = 420;
+        for (int i = 0; i < 11; i++) {
+            Enemy e = g.enemies.spawn(Config.ENEMIES[i], g.player.x + ((i % 4) - 1.5f) * 120, g.player.y - 160 - (i / 4) * 130);
+            if (e != null && i >= 8) g.enemies.fuse(e, i == 10 ? 2 : 1);
+        }
+        g.weapons.slots[0] = g.loot.roll(Config.W_MINIGUN, Loot.EPIC, 5); g.weapons.active = 0;
+        for (int i = 0; i < 4; i++) hs.frame();
+        g.camera.snap(g.player.x, g.player.y - 150); g.camera.zoom = 1.3f; g.camera.targetZoom = 1.3f;
+        save(g, w, h, "23-zombies-2d");
+        // 3D first person
+        g.settings.view3D = true;
+        g.enemies.clear();
+        g.player.view = -MathUtil.PI / 2;
+        for (int i = 0; i < 9; i++) {
+            Enemy e = g.enemies.spawn(Config.ENEMIES[i % 10], g.player.x + (i - 4) * 70, g.player.y - 260 - (i % 3) * 140);
+            if (e != null && i == 4) g.enemies.fuse(e, 2);
+        }
+        g.loot.drop(g.player.x + 160, g.player.y - 200, g.loot.roll(Config.W_RAILGUN, Loot.LEGENDARY, 4));
+        g.weapons.slots[0] = g.loot.roll(Config.W_TWIN, Loot.RARE, 5); g.weapons.slots[0].owner = g.hero;
+        for (int i = 0; i < 6; i++) { hs.frame(); for (int k = 0; k < g.enemies.list.size; k++) { Enemy e = g.enemies.list.get(k); e.x -= e.vx / 60f; e.y -= e.vy / 60f; } }
+        g.weapons.slots[0].recoil = 0.9f;
+        save(g, w, h, "24-3d-first-person");
+        g.bosses.spawned = 0;
+        Enemy b = g.bosses.spawnBoss();
+        if (b != null) { b.x = g.player.x + 40; b.y = g.player.y - 420; }
+        g.weapons.slots[0] = g.loot.roll(Config.W_LASER, Loot.EPIC, 5); g.weapons.slots[0].owner = g.hero;
+        g.weapons.slots[0].recoil = 0.2f;
+        hs.frame();
+        save(g, w, h, "25-3d-boss");
+        g.settings.view3D = false;
+        // layout editor
+        g.toMenu();
+        g.state = Game.S_LAYOUT;
+        save(g, w, h, "26-layout-editor");
+        // split screen co-op + lobby
+        g.mpm.startSplit(Game.M_COOP); g.godMode = true;
+        hs.bot = false;
+        hs.tick(20f);
+        float s = g.scale;
+        g.touchDown(1, 150 * s, 1100 * s); g.touchMove(1, 190 * s, 1060 * s);
+        hs.tick(0.3f);
+        save(g, w, h, "27-split-coop");
+        g.touchUp(1, 0, 0);
+        g.toMenu();
+        g.mpm.hostLan(0);
+        g.mpm.names[1] = "Sara"; g.mpm.slotLink[1] = 5; g.mpm.lobbyCount = 2;
+        save(g, w, h, "28-lobby");
+        g.mpm.leave();
+        g.state = Game.S_MPMENU;
+        save(g, w, h, "29-mp-menu");
     }
 
     static void newScreens(int w, int h) throws Exception {

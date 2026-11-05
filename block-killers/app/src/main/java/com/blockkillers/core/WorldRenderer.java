@@ -28,10 +28,19 @@ public final class WorldRenderer {
         drawObstacles(gfx, l, t, r, b);
         drawEnemies(gfx, l, t, r, b);
         drawProjectiles(gfx, l, t, r, b);
-        drawBeam(gfx);
-        drawBlades(gfx);
-        drawPets(gfx);
-        drawPlayer(gfx);
+        Hero bound = g.hero;
+        for (int i = 0; i < g.heroCount; i++) {
+            Hero h = g.heroes[i];
+            if (!h.active) continue;
+            g.bind(h);
+            if (h.downed) { drawDowned(gfx, h); continue; }
+            drawBeam(gfx);
+            drawBlades(gfx);
+            drawPets(gfx);
+            drawPlayer(gfx);
+            if (g.mp()) drawNameTag(gfx, h);
+        }
+        g.bind(bound);
         g.fx.render(gfx, l, t, r, b);
         drawBullets(gfx, l, t, r, b);
         drawLootLabels(gfx);
@@ -201,15 +210,8 @@ public final class WorldRenderer {
                 rot = MathUtil.atan2(e.vy, e.vx) + MathUtil.PI / 2f;
                 if (windup) rot = MathUtil.atan2(e.dirY, e.dirX) + MathUtil.PI / 2f;
             }
-            if (e.flash > 0) col = 0xFFFFFFFF;
-            if (e.tier == 0) {
-                if (high) Shapes.draw(gfx, et.shape, e.x, e.y, s * 1.45f, rot, MathUtil.alpha(col, 0.16f));
-                Shapes.draw(gfx, et.shape, e.x, e.y, s, rot, col);
-                Shapes.draw(gfx, et.shape, e.x, e.y, s * 0.55f, rot, MathUtil.mix(col, 0xFF000000, 0.45f));
-            } else {
-                drawFused(gfx, e, s, rot, col, high);
-            }
-            if (et.behavior == EnemyType.B_SHOOT) gfx.circle(e.x, e.y, s * 0.22f, 0xFFFFFFFF);
+            if (e.tier > 0 && high) gfx.circle(e.x, e.y, s * 1.7f, MathUtil.alpha(e.tier == 2 ? 0xFFFF1744 : 0xFFFFAB00, 0.12f));
+            Zombies.drawTop(gfx, e, s);
             drawProtection(gfx, e, s);
             if (windup) gfx.line(e.x, e.y, e.x + e.dirX * 120, e.y + e.dirY * 120, 3, 0x88FF6D00);
             if ((e.maxHp >= 80 || e.tier > 0) && e.hp < e.maxHp) {
@@ -222,7 +224,7 @@ public final class WorldRenderer {
 
     /** Shield ring (blue, fades as it drains) and armor plating (steel outline). */
     private void drawProtection(Gfx gfx, Enemy e, float s) {
-        if (e.armored) Shapes.stroke(gfx, e.boss ? g.bosses.shape(e) : e.type.shape, e.x, e.y, s * 1.08f, e.rot, Math.max(3f, s * 0.12f), 0xCCB0BEC5);
+        if (e.armored) for (int k = 0; k < 6; k++) { float a = k * MathUtil.TAU / 6 + e.t * 0.2f; gfx.arc(e.x, e.y, s * 1.18f, a, 0.6f, 0x88B0BEC5); }
         if (e.shield > 0) {
             float k = e.shield / e.maxShield;
             gfx.circle(e.x, e.y, s * 1.55f, MathUtil.alpha(0xFF448AFF, 0.10f + 0.12f * k + (e.shieldFlash > 0 ? 0.25f : 0)));
@@ -282,12 +284,8 @@ public final class WorldRenderer {
                 gfx.circle(e.dirX, e.dirY, e.radius, MathUtil.alpha(col, a * 0.2f));
             }
         }
-        gfx.circle(e.x, e.y, s * 1.7f, MathUtil.alpha(col, 0.10f));
-        Shapes.draw(gfx, shape, e.x, e.y, s * 1.3f * pulse, -e.rot * 0.5f, MathUtil.alpha(col, 0.25f));
-        Shapes.draw(gfx, shape, e.x, e.y, s * pulse, e.rot, e.flash > 0 ? 0xFFFFFFFF : col);
-        Shapes.draw(gfx, shape, e.x, e.y, s * 0.65f, -e.rot, MathUtil.mix(col, 0xFF000000, 0.5f));
-        Shapes.stroke(gfx, shape, e.x, e.y, s * 0.4f, e.rot * 2, 4, 0xFFFFFFFF);
-        gfx.circle(e.x, e.y, s * 0.16f, 0xFFFFFFFF);
+        gfx.circle(e.x, e.y, s * 1.7f * pulse, MathUtil.alpha(col, 0.12f));
+        Zombies.drawBossTop(gfx, e, s);
         drawProtection(gfx, e, s);
     }
 
@@ -397,6 +395,32 @@ public final class WorldRenderer {
         }
     }
 
+    private void drawNameTag(Gfx gfx, Hero h) {
+        Player p = h.player;
+        float y = p.y - p.radius - 30;
+        gfx.text(h.name, p.x + 1.5f, y + 1.5f, 18, 0xAA000000, Gfx.ALIGN_CENTER, true);
+        gfx.text(h.name, p.x, y, 18, h.color, Gfx.ALIGN_CENTER, true);
+        if (h.id != g.localHero || g.splitScreen) {
+            float w = p.radius * 2;
+            gfx.rect(p.x - w / 2, y + 6, p.x + w / 2, y + 11, 0x99000000);
+            gfx.rect(p.x - w / 2, y + 6, p.x - w / 2 + w * MathUtil.clamp(p.hp / p.maxHp, 0, 1), y + 11, h.color);
+        }
+        // team ring so every player is easy to tell apart
+        gfx.ring(p.x, p.y, p.radius * 1.22f, 3f, MathUtil.alpha(h.color, 0.9f));
+    }
+
+    /** Downed (co-op, revivable) or waiting to respawn (PvP). */
+    private void drawDowned(Gfx gfx, Hero h) {
+        Player p = h.player;
+        if (g.pvp()) return;
+        float pulse = 0.5f + 0.5f * MathUtil.sin(g.realTime * 6);
+        gfx.circle(p.x, p.y, p.radius * 1.1f, 0xFF455A64);
+        gfx.circle(p.x, p.y, p.radius * 0.5f, 0xFF90A4AE);
+        gfx.ring(p.x, p.y, Config.REVIVE_RANGE, 2, MathUtil.alpha(0xFF00E676, 0.3f + 0.3f * pulse));
+        if (h.reviveProgress > 0) gfx.arc(p.x, p.y, p.radius * 1.4f, -MathUtil.PI / 2, MathUtil.TAU * h.reviveProgress / Config.REVIVE_TIME, 0x8800E676);
+        gfx.text(h.name + " ✚", p.x, p.y - p.radius - 24, 18, 0xFF00E676, Gfx.ALIGN_CENTER, true);
+    }
+
     private void drawPets(Gfx gfx) {
         if (!g.player.alive) return;
         PetManager pm = g.pets;
@@ -453,13 +477,11 @@ public final class WorldRenderer {
             Shapes.draw(gfx, sides, p.x, p.y, r * 1.28f, -time * 0.4f, MathUtil.alpha(0xFF90A4AE, 0.55f));
             Shapes.stroke(gfx, sides, p.x, p.y, r * 1.28f, -time * 0.4f, 3, 0xFFCFD8DC);
         }
-        // body
-        gfx.circle(p.x, p.y, r * 1.12f, MathUtil.alpha(body, 0.35f));
-        gfx.circle(p.x, p.y, r, body);
-        // max-HP rings
+        // body: an armed survivor (suit colour = team / evolution colour)
+        Zombies.drawSurvivorTop(gfx, p.x, p.y, r, p.facing, MathUtil.mix(body, 0xFF263238, 0.35f), 0xFFE0B48C, moving, time);
+        // max-HP: extra armor rings on the vest
         int rings = Math.min(4, f[UpgradeManager.MAX_HP]);
-        for (int k = 0; k < rings; k++) gfx.ring(p.x, p.y, r * (0.82f - k * 0.13f), 2.5f, 0x88FFFFFF);
-        gfx.circle(p.x, p.y, r * 0.5f, 0xFFFFFFFF);
+        for (int k = 0; k < rings; k++) gfx.ring(p.x, p.y, r * (1.0f + k * 0.1f), 2f, MathUtil.alpha(body, 0.6f));
         // crit star in the core
         int crit = Math.min(3, f[UpgradeManager.CRIT]);
         if (crit > 0) {
@@ -516,6 +538,12 @@ public final class WorldRenderer {
             float sc = p.radius / Config.PLAYER_RADIUS;
             gfx.translate(r * 0.7f - w.recoil * 6 * sc, r * 0.35f);
             drawGun(gfx, w, sc * (1f - 0.4f * sw), w.recoil);
+            if (w.recoil > 0.7f && w.type.kind != WeaponType.K_ORBIT && w.type.kind != WeaponType.K_MINE) {
+                float mx = 44 * sc, fl = 16 * sc * (w.recoil - 0.4f);
+                int fc = w.element != Loot.E_NONE ? Loot.ELEMENT_COLORS[w.element] : 0xFFFFD54F;
+                gfx.circle(mx, 0, fl, MathUtil.alpha(fc, 0.45f));
+                gfx.circle(mx, 0, fl * 0.5f, 0xEEFFF8E1);
+            }
             gfx.restore();
         }
     }

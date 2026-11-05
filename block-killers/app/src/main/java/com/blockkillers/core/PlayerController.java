@@ -18,6 +18,12 @@ public final class PlayerController {
         float ix, iy;
         if (overrideInput) { ix = inputX; iy = inputY; }
         else { ix = g.joystick.outX; iy = g.joystick.outY; }
+        if (g.view3D() && g.hero.local && !overrideInput) {
+            // first person: joystick up = forward along the view, sideways = strafe
+            float h = p.view, fwd = -iy, str = ix;
+            ix = MathUtil.cos(h) * fwd - MathUtil.sin(h) * str;
+            iy = MathUtil.sin(h) * fwd + MathUtil.cos(h) * str;
+        }
         if (g.map.corridor()) iy = 0;   // narrow lane: left and right only
         float m = MathUtil.len(ix, iy);
         if (m > 1f) { ix /= m; iy /= m; }

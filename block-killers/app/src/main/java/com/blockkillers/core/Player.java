@@ -10,6 +10,8 @@ public final class Player {
     public int extraProjectiles;
     public int level, xp;
     public float invuln, hurtFlash, facing;
+    /** First-person view heading (3D mode) and small vertical look offset. */
+    public float view, viewPitch;
     public boolean alive;
     /** Visible body features gained from upgrades (index = UpgradeManager stat id). */
     public final int[] features = new int[UpgradeManager.STAT_COUNT];
@@ -28,7 +30,7 @@ public final class Player {
         critChance = Config.PLAYER_CRIT + pb.crit;
         critMult = Config.PLAYER_CRIT_MULT;
         armor = pb.armor; regen = 0f; extraProjectiles = 0;
-        level = 1; xp = 0; invuln = 0; hurtFlash = 0; facing = 0;
+        level = 1; xp = 0; invuln = 0; hurtFlash = 0; facing = 0; view = 0; viewPitch = 0;
         alive = true;
         for (int i = 0; i < features.length; i++) features[i] = 0;
         upgradesTaken = 0; morph = 0; radius = baseRadius;

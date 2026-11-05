@@ -152,10 +152,6 @@ public final class LootManager {
     }
 
     public void update(float dt) {
-        Player p = g.player;
-        nearby = null;
-        float range = PICKUP_RANGE * g.shop.magnet() * p.radius / Config.PLAYER_RADIUS;
-        float best = range * range;
         for (int i = items.size - 1; i >= 0; i--) {
             GroundItem it = items.get(i);
             it.t += dt;
@@ -164,16 +160,57 @@ public final class LootManager {
             it.x += it.vx * dt; it.y += it.vy * dt;
             float d = Math.max(0f, 1f - 5f * dt);
             it.vx *= d; it.vy *= d;
-            float d2 = MathUtil.dist2(it.x, it.y, p.x, p.y);
-            if (d2 < best) { best = d2; nearby = it; }
         }
-        // chests open on touch
         WorldMap m = g.map;
-        for (int i = 0; i < m.chestCount; i++) {
-            if (m.opened[i]) continue;
-            float rr = p.radius + 34;
-            if (MathUtil.dist2(m.cx[i], m.cy[i], p.x, p.y) < rr * rr) openChest(i);
+        for (int h = 0; h < g.heroCount; h++) {
+            Hero hero = g.heroes[h];
+            hero.nearby = null;
+            if (!hero.canAct()) continue;
+            Player p = hero.player;
+            float range = PICKUP_RANGE * (hero.local ? g.shop.magnet() : 1f) * p.radius / Config.PLAYER_RADIUS;
+            float best = range * range;
+            for (int i = 0; i < items.size; i++) {
+                GroundItem it = items.get(i);
+                float d2 = MathUtil.dist2(it.x, it.y, p.x, p.y);
+                if (d2 < best) { best = d2; hero.nearby = it; }
+            }
+            // chests open on touch (any player)
+            for (int i = 0; i < m.chestCount; i++) {
+                if (m.opened[i]) continue;
+                float rr = p.radius + 34;
+                if (MathUtil.dist2(m.cx[i], m.cy[i], p.x, p.y) < rr * rr) openChest(i);
+            }
         }
+        nearby = g.heroes[g.localHero].nearby;
+    }
+
+    /** Multiplayer: a hero equips the item it stands on into a slot (or its active slot). */
+    public boolean equipFor(Hero h, int slot) {
+        GroundItem it = h.nearby;
+        if (it == null || !h.canAct()) return false;
+        if (slot < 0) { slot = h.weapons.firstFree(); if (slot < 0) slot = h.weapons.active; }
+        h.weapons.place(slot, it.weapon);
+        removeItem(it);
+        if (h.local) g.audio.play(Sfx.SELECT);
+        return true;
+    }
+
+    public boolean scrapFor(Hero h) {
+        GroundItem it = h.nearby;
+        if (it == null || !h.canAct()) return false;
+        Hero prev = g.hero;
+        g.bind(h);
+        g.xp.addXp(Loot.SCRAP_XP[it.weapon.rarity] * (1 + itemLevel() / 4));
+        g.bind(prev);
+        removeItem(it);
+        return true;
+    }
+
+    private void removeItem(GroundItem it) {
+        for (int i = 0; i < items.size; i++) if (items.get(i) == it) { items.removeAt(i); break; }
+        for (int h = 0; h < g.heroCount; h++) if (g.heroes[h].nearby == it) g.heroes[h].nearby = null;
+        if (nearby == it) nearby = null;
+        if (viewing == it) viewing = null;
     }
 
     public void openChest(int i) {
@@ -204,9 +241,5 @@ public final class LootManager {
         g.audio.play(Sfx.XP);
     }
 
-    private void remove(GroundItem it) {
-        for (int i = 0; i < items.size; i++) if (items.get(i) == it) { items.removeAt(i); break; }
-        if (nearby == it) nearby = null;
-        viewing = null;
-    }
+    private void remove(GroundItem it) { removeItem(it); viewing = null; }
 }

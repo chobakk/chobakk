@@ -3,8 +3,12 @@
     android:versionCode="1"
     android:versionName="1.0">
 
-    <!-- Only permission: haptic feedback (normal permission, granted at install). No internet. -->
+    <!-- All are "normal" permissions granted at install (no prompts). Network is used only for multiplayer. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 

@@ -29,6 +29,7 @@ public final class ParticleSystem {
     }
 
     public void burst(float x, float y, int color, int count, float speed, float size) {
+        g.netEvents.fx(0, x, y, count, speed, size, color, null);
         int q = g.settings.quality;
         int n = q == 0 ? count / 3 : (q == 1 ? count * 2 / 3 : count);
         for (int i = 0; i < n; i++) {
@@ -38,17 +39,20 @@ public final class ParticleSystem {
     }
 
     public void ring(float x, float y, float radius, int color, float life) {
+        g.netEvents.fx(1, x, y, radius, life, 0, color, null);
         Particle p = spawn(x, y, 0, 0, life, radius, color, RING);
         if (p != null) p.drag = 0;
     }
 
     public void text(float x, float y, String s, int color, float size) {
+        g.netEvents.fx(2, x, y, size, 0, 0, color, s);
         if (texts.full()) return;
         FloatText t = texts.obtain();
         t.x = x + MathUtil.rand(-8, 8); t.y = y; t.vy = -70; t.life = t.maxLife = 0.7f; t.text = s; t.color = color; t.size = size;
     }
 
     public void bolt(float x1, float y1, float x2, float y2, int color) {
+        g.netEvents.fx(3, x1, y1, x2, y2, 0, color, null);
         if (boltCount >= bolts.length) return;
         float[] b = bolts[boltCount++];
         b[0] = x1; b[1] = y1; b[2] = x2; b[3] = y2; b[4] = 0.18f; boltColors[boltCount - 1] = color;

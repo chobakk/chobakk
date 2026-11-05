@@ -6,6 +6,7 @@ public final class SaveManager {
     public int bestScore, gamesPlayed, highestLevel, bossesDefeated, achievementMask, legendariesFound, chestsOpened, coins;
     public long coinsEarned;
     public int selectedMap;
+    public String playerName = "Player", serverAddress = "";
     public final int[] bestByMap = new int[WorldMap.MODES];
     public long totalKills;
     public float totalTime, bestTime;
@@ -26,6 +27,8 @@ public final class SaveManager {
         coins = st.getInt("coins", 0);
         coinsEarned = st.getLong("coins_earned", 0);
         selectedMap = MathUtil.clamp(st.getInt("map_mode", 0), 0, WorldMap.MODES - 1);
+        playerName = st.getString("player_name", "Player");
+        serverAddress = st.getString("server_addr", "");
         for (int i = 0; i < bestByMap.length; i++) bestByMap[i] = st.getInt("best_map_" + i, 0);
     }
 
@@ -43,6 +46,8 @@ public final class SaveManager {
         st.putInt("coins", coins);
         st.putLong("coins_earned", coinsEarned);
         st.putInt("map_mode", selectedMap);
+        st.putString("player_name", playerName);
+        st.putString("server_addr", serverAddress);
         for (int i = 0; i < bestByMap.length; i++) st.putInt("best_map_" + i, bestByMap[i]);
         st.flush();
     }

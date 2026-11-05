@@ -1,9 +1,8 @@
-# BLOCK KILLERS
+# ZOMBIE KILLER  (formerly Block Killers)
 
-A 2D top-down endless survival arcade game for Android. You are a glowing circle in a neon arena,
-surrounded by hostile geometric shapes. Move, auto-fire, level up, pick upgrades, beat bosses and survive.
+An endless zombie-survival shooter for Android. Play in **2D top-down** or **3D first person** (gun in your hands, with sway, bob, recoil, muzzle flash and swap animations), solo or **multiplayer**: same-phone split screen, Wi-Fi, or online through a small relay server, in co-op, PvP or PvPvE.
 
-**APK:** [`release/Block-Killers.apk`](release/Block-Killers.apk) (≈200 KB, Android 7.0+ / API 24–34, works fully offline)
+**APK:** [`release/Zombie-Killer.apk`](release/Zombie-Killer.apk) (≈250 KB, Android 7.0+ / API 24–34; offline except multiplayer)
 
 | Menu | Gameplay | Level up | Boss | Game over |
 |---|---|---|---|---|
@@ -12,9 +11,34 @@ surrounded by hostile geometric shapes. Move, auto-fire, level up, pick upgrades
 *(Screenshots above were rendered by Android's own Skia canvas through Robolectric, not mock-ups.)*
 
 ## Install on your phone
-1. Copy `release/Block-Killers.apk` to the phone (or download it there) and tap it.
+1. Copy `release/Zombie-Killer.apk` to the phone (or download it there) and tap it.
 2. Allow "Install unknown apps" for the app you opened it with (browser / file manager / messenger).
 3. If Play Protect warns about an unknown developer, choose **Install anyway**. The app is self-signed, and the only permission it asks for is vibration. It has no internet permission.
+
+
+## What's new in v3 — Zombie Killer
+- **Zombies:** original hand-coded zombie designs with walk animations:
+  - 11 zombie types: Walker, Runner, Crawlers, Riot Zombie (shield), Twitcher, Charger, Soldier Zombie (armor), Bloater (bursts into Spawnlings), Spitter (acid), Brute and Spawnling.
+  - 3 boss zombies: The Abomination, Brood Mother and The Stalker.
+  - Late-game *Mutated* and *Horror* zombies grow extra arms, heads and glowing veins.
+  - The player is an armed survivor whose gear changes with every upgrade.
+- **2D / 3D view** (Settings → View):
+  - 3D is a ray-cast first-person view of the same world: walls, zombies, loot beams, chests, companions and other players.
+  - The left half of the screen moves you; drag on the right half to look around.
+  - Guns auto-fire at zombies in your crosshair.
+- **Control layout editor** (Settings → Control layout): drag the gun hotbar, Nova, pick-up, pause and minimap anywhere, resize them with − / +, reset, saved on the phone.
+- **Multiplayer** (main menu → MULTIPLAYER). Modes:
+  - **Co-op (PvE):** team up against the horde. Downed teammates are revived by standing next to them; you lose when everyone is down.
+  - **PvP:** players fight each other (shots do 35% damage to players), with respawns and guns dropping from the sky. Most points after 5:00 wins.
+  - **PvPvE:** PvP while the horde attacks everyone, 8:00.
+
+  Connections:
+  - **Same phone:** 2 players on the left and right halves of the screen.
+  - **Wi-Fi:** host on one phone; the others see it under "Searching for Wi-Fi games" or join by IP (shown in the lobby). Up to 4 players. Works over a phone hotspot too.
+  - **Online:** run the relay (`server/run-relay.sh`, Java 11+) on any PC or server reachable from the internet and open TCP port 47800. In the game, set *Relay server* to `your-ip-or-domain:47800`. The host taps HOST ONLINE ROOM and shares the 4-letter code; friends tap JOIN ONLINE ROOM.
+
+  The host runs the match; other phones send their inputs and draw the host's snapshots (about 20 per second). Level-up cards and loot don't pause the match in multiplayer.
+- The game name changed but the Android app ID stayed the same, so it installs as an update over Block Killers and keeps your progress.
 
 ## How to play
 - **Move:** touch and drag anywhere (a floating joystick appears under your thumb). The bottom strip is the gun hotbar.
@@ -48,7 +72,7 @@ surrounded by hostile geometric shapes. Move, auto-fire, level up, pick upgrades
 Requirements: JDK 17+ (tested with 21), `curl`, `unzip`. The Android SDK is installed automatically.
 
 ```bash
-./build-apk.sh                       # -> release/Block-Killers.apk
+./build-apk.sh                       # -> release/Zombie-Killer.apk
 ANDROID_HOME=/path/to/sdk ./build-apk.sh   # use an existing SDK
 ```
 `build-apk.sh` runs `aapt2 → javac → d8 → zipalign → apksigner` directly, so it needs no Gradle and no third-party libraries.
@@ -62,7 +86,7 @@ Both builds sign with `signing/block-killers.jks` (password `blockkillers`). Thi
 
 ## Tests
 ```bash
-tools/run-tests.sh            # 203 automated gameplay checks (headless, ~10 s)
+tools/run-tests.sh            # 254 automated checks incl. real-socket multiplayer (headless, ~10 s)
 tools/run-tests.sh screens    # renders every screen to docs/screenshots/
 tools/run-tests.sh assets     # regenerates launcher icons + splash logo
 ```
@@ -76,5 +100,5 @@ app/src/main/res/                            icons (adaptive + PNG), splash, the
 app/src/test/                                Robolectric tests (real Android framework on the JVM)
 desktop/src/                                 headless test harness, bot player, Java2D renderer, screenshot + asset generators
 build-apk.sh, build.gradle, settings.gradle  build configuration
-release/Block-Killers.apk                    the installable game
+release/Zombie-Killer.apk                    the installable game
 ```
